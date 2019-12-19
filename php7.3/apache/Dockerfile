@@ -10,18 +10,21 @@ RUN set -eux; \
 		a2enmod rewrite; \
 	fi; \
 	\
-	savedAptMark="$(apt-mark showmanual)"; \
-	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		git \
+		mariadb-client \
+		unzip \
+	; \
+	\
+	savedAptMark="$(apt-mark showmanual)"; \
+	\
+	apt-get install -y --no-install-recommends \
 		libfreetype6-dev \
 		libjpeg-dev \
 		libpng-dev \
 		libpq-dev \
 		libzip-dev \
-    mariadb-client \
-		unzip \
 	; \
 	\
 	docker-php-ext-configure gd \
@@ -32,7 +35,7 @@ RUN set -eux; \
 	\
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
-    gd \
+		gd \
 		opcache \
 		pdo_mysql \
 		pdo_pgsql \
@@ -65,8 +68,8 @@ RUN { \
 # Remove the memory limit for the CLI only.
 	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini; \
 # Change docroot since we use Composer Drupal project.
-  sed -ri -e 's!/var/www/html!/var/www/html/web!g' /etc/apache2/sites-available/*.conf; \
-  sed -ri -e 's!/var/www!/var/www/html/web!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+	sed -ri -e 's!/var/www/html!/var/www/html/web!g' /etc/apache2/sites-available/*.conf; \
+	sed -ri -e 's!/var/www!/var/www/html/web!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 WORKDIR /var/www/html
 
