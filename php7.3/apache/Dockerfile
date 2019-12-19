@@ -14,12 +14,14 @@ RUN set -eux; \
 	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
+		git \
 		libfreetype6-dev \
 		libjpeg-dev \
 		libpng-dev \
 		libpq-dev \
 		libzip-dev \
     mariadb-client \
+		unzip \
 	; \
 	\
 	docker-php-ext-configure gd \
