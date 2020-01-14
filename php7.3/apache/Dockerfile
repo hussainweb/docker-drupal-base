@@ -14,6 +14,7 @@ RUN set -eux; \
 	apt-get install -y --no-install-recommends \
 		git \
 		unzip \
+		sendmail \
 	; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
