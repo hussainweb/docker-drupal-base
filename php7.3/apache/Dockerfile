@@ -22,6 +22,7 @@ RUN set -eux; \
 	apt-get install -y --no-install-recommends \
 		libfreetype6-dev \
 		libjpeg-dev \
+		libmemcached-dev \
 		libpng-dev \
 		libpq-dev \
 		libzip-dev \
@@ -40,6 +41,11 @@ RUN set -eux; \
 		pdo_mysql \
 		pdo_pgsql \
 		zip \
+	; \
+	\
+	pecl install \
+		memcached \
+		redis \
 	; \
 	\
 # reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
