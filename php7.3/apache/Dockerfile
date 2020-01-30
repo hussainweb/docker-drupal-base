@@ -20,11 +20,13 @@ RUN set -eux; \
 	savedAptMark="$(apt-mark showmanual)"; \
 	\
 	apt-get install -y --no-install-recommends \
+		libbz2-dev \
 		libfreetype6-dev \
 		libjpeg-dev \
 		libmemcached-dev \
 		libpng-dev \
 		libpq-dev \
+		libyaml-dev \
 		libzip-dev \
 	; \
 	\
@@ -36,16 +38,29 @@ RUN set -eux; \
 	\
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
+		bz2 \
+		exif \
 		gd \
 		opcache \
+		pcntl \
 		pdo_mysql \
 		pdo_pgsql \
+		sockets \
 		zip \
 	; \
 	\
 	pecl install \
+		apcu \
 		memcached \
 		redis \
+		yaml \
+	; \
+	\
+	docker-php-ext-enable \
+		apcu \
+		memcached \
+		redis \
+		yaml \
 	; \
 	\
 # reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
