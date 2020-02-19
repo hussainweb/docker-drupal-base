@@ -4,6 +4,8 @@ dir=$(dirname $0)
 
 set -ex
 
+export DOCKER_BUILDKIT=1
+
 docker pull php:7.3-apache-buster
 docker pull composer:1.9
 
