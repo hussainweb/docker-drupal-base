@@ -15,6 +15,7 @@ RUN set -eux; \
 		git \
 		unzip \
 		sendmail \
+		mariadb-client \
 	; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
