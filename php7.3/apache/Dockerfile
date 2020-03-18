@@ -1,4 +1,4 @@
-FROM composer:1.9 AS composer
+FROM composer:1.10 AS composer
 
 # from https://www.drupal.org/docs/8/system-requirements/drupal-8-php-requirements
 FROM php:7.3-apache-buster
