@@ -1,4 +1,4 @@
-ARG PHP_VERSION=7.3-apache-buster
+ARG PHP_VERSION=7.4-apache-buster
 FROM composer:1.10 AS composer
 
 # from https://www.drupal.org/docs/8/system-requirements/drupal-8-php-requirements
@@ -26,16 +26,14 @@ RUN set -eux; \
 		libfreetype6-dev \
 		libjpeg-dev \
 		libmemcached-dev \
-		libpng-dev \
 		libpq-dev \
 		libyaml-dev \
 		libzip-dev \
 	; \
 	\
 	docker-php-ext-configure gd \
-		--with-freetype-dir=/usr \
-		--with-jpeg-dir=/usr \
-		--with-png-dir=/usr \
+		--with-freetype \
+		--with-jpeg \
 	; \
 	\
 	docker-php-ext-install -j "$(nproc)" \
