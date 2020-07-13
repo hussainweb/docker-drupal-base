@@ -99,4 +99,3 @@ WORKDIR /var/www/html
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 RUN composer global require hirak/prestissimo
-

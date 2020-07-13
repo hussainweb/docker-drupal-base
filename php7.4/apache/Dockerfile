@@ -26,6 +26,7 @@ RUN set -eux; \
 		libfreetype6-dev \
 		libjpeg-dev \
 		libmemcached-dev \
+		libpng-dev \
 		libpq-dev \
 		libyaml-dev \
 		libzip-dev \
@@ -33,7 +34,7 @@ RUN set -eux; \
 	\
 	docker-php-ext-configure gd \
 		--with-freetype \
-		--with-jpeg \
+		--with-jpeg=/usr \
 	; \
 	\
 	docker-php-ext-install -j "$(nproc)" \
@@ -97,4 +98,3 @@ WORKDIR /var/www/html
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
 RUN composer global require hirak/prestissimo
-
