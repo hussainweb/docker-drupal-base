@@ -1,5 +1,5 @@
 ARG PHP_VERSION=7.3-apache-buster
-FROM composer:1.10 AS composer
+FROM composer:2.0 AS composer
 
 # from https://www.drupal.org/docs/8/system-requirements/drupal-8-php-requirements
 FROM php:${PHP_VERSION}
@@ -97,5 +97,3 @@ RUN { \
 WORKDIR /var/www/html
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
-
-RUN composer global require hirak/prestissimo
