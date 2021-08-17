@@ -42,6 +42,7 @@ RUN set -eux; \
 		bz2 \
 		exif \
 		gd \
+		intl \
 		opcache \
 		pcntl \
 		pdo_mysql \
