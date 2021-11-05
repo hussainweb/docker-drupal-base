@@ -1,7 +1,7 @@
 ARG PHP_VERSION=7.4-apache-buster
-FROM composer:2.0 AS composer
+FROM composer:2 AS composer
 
-# from https://www.drupal.org/docs/8/system-requirements/drupal-8-php-requirements
+# from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}
 
 # install the PHP extensions we need
@@ -24,6 +24,7 @@ RUN set -eux; \
 	apt-get install -y --no-install-recommends \
 		libbz2-dev \
 		libfreetype6-dev \
+		libicu-dev \
 		libjpeg-dev \
 		libmemcached-dev \
 		libpng-dev \
@@ -97,3 +98,4 @@ RUN { \
 WORKDIR /var/www/html
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
+ENV PATH=${PATH}:/var/www/html/vendor/bin
