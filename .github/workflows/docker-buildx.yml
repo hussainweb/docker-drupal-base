@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php_version: [7.3, 7.4, 8.0]
+        php_version: ['7.3', '7.4', '8.0']
     steps:
       -
         name: Checkout
@@ -39,7 +39,7 @@ jobs:
         run: echo "DOCKERFILE_DIR=php7.4" >> $GITHUB_ENV
       -
         name: Build PHP ${{ matrix.php_version }}
-        run: |
+        run: >
           docker buildx build --push
             --platform linux/amd64,linux/arm64
             --tag hussainweb/drupal-base:php${{ matrix.php_version }}
