@@ -1,0 +1,47 @@
+name: Build Docker image
+on:
+  workflow_dispatch:
+
+env:
+  DOCKERFILE_DIR: php7.3
+
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php_version: [7.3, 7.4, 8.0]
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Set up Docker buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Inspect builder
+        run: |
+          echo "Name:      ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status:    ${{ steps.buildx.outputs.status }}"
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: hussainweb
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Set Dockerfile directory
+        if: ${{ matrix.php_version == '7.4' || matrix.php_version == '8.0' }}
+        run: echo "DOCKERFILE_DIR=php7.4" >> $GITHUB_ENV
+      -
+        name: Build PHP ${{ matrix.php_version }}
+        run: |
+          docker buildx build --push
+            --platform linux/amd64,linux/arm64
+            --tag hussainweb/drupal-base:php${{ matrix.php_version }}
+            --build-arg PHP_VERSION=${{ matrix.php_version }}-apache-buster
+            ./${{ env.DOCKERFILE_DIR }}/apache/
