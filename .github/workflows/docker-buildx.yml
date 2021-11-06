@@ -41,7 +41,7 @@ jobs:
         name: Build PHP ${{ matrix.php_version }}
         run: >
           docker buildx build --push
-            --platform linux/amd64,linux/arm64
-            --tag hussainweb/drupal-base:php${{ matrix.php_version }}
-            --build-arg PHP_VERSION=${{ matrix.php_version }}-apache-buster
-            ./${{ env.DOCKERFILE_DIR }}/apache/
+          --platform linux/amd64,linux/arm64
+          --tag hussainweb/drupal-base:php${{ matrix.php_version }}
+          --build-arg PHP_VERSION=${{ matrix.php_version }}-apache-buster
+          ./${{ env.DOCKERFILE_DIR }}/apache/
