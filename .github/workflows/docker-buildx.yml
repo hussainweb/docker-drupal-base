@@ -48,3 +48,4 @@ jobs:
           --tag hussainweb/drupal-base:php${{ matrix.php_version }}
           --build-arg PHP_VERSION=${{ matrix.php_version }}-apache-buster
           ./${{ env.DOCKERFILE_DIR }}/apache/
+          ${{ matrix.php_version == '8.0' && '--tag hussainweb/drupal-base:latest' || ''}}
