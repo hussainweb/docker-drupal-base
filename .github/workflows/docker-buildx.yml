@@ -41,11 +41,12 @@ jobs:
         if: ${{ matrix.php_version == '7.4' || matrix.php_version == '8.0' }}
         run: echo "DOCKERFILE_DIR=php7.4" >> $GITHUB_ENV
       -
-        name: Build PHP ${{ matrix.php_version }}
-        run: >
-          docker buildx build --push
-          --platform linux/amd64,linux/arm64
-          --tag hussainweb/drupal-base:php${{ matrix.php_version }}
-          --build-arg PHP_VERSION=${{ matrix.php_version }}-apache-buster
-          ./${{ env.DOCKERFILE_DIR }}/apache/
-          ${{ matrix.php_version == '8.0' && '--tag hussainweb/drupal-base:latest' || ''}}
+        name: Build and push Docker image for PHP ${{ matrix.php_version }}
+        uses: docker/build-push-action@v2
+        with:
+          context: ${{ env.DOCKERFILE_DIR }}/apache/
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: hussainweb/drupal-base:php${{ matrix.php_version }}${{ matrix.php_version == '8.0' && ',hussainweb/drupal-base:latest' || '' }}
+          build-args: |
+            PHP_VERSION=${{ matrix.php_version }}-apache-buster
+          platforms: linux/amd64,linux/arm64
