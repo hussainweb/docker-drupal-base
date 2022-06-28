@@ -1,6 +1,12 @@
 name: Build Docker image
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '5 4 1,15 * *'
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 env:
   DOCKERFILE_DIR: php7.4
