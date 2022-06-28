@@ -1,6 +1,4 @@
 ARG PHP_VERSION=7.4-apache-buster
-FROM composer:2 AS composer
-
 # from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}
 
@@ -29,6 +27,7 @@ RUN set -eux; \
 		libmemcached-dev \
 		libpng-dev \
 		libpq-dev \
+		libwebp-dev \
 		libyaml-dev \
 		libzip-dev \
 	; \
@@ -36,6 +35,7 @@ RUN set -eux; \
 	docker-php-ext-configure gd \
 		--with-freetype \
 		--with-jpeg=/usr \
+		--with-webp \
 	; \
 	\
 	docker-php-ext-install -j "$(nproc)" \
@@ -97,5 +97,5 @@ RUN { \
 
 WORKDIR /var/www/html
 
-COPY --from=composer /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV PATH=${PATH}:/var/www/html/vendor/bin
