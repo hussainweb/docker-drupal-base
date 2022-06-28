@@ -3,14 +3,14 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKERFILE_DIR: php7.3
+  DOCKERFILE_DIR: php7.4
 
 jobs:
   buildx:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php_version: ['7.3', '7.4', '8.0']
+        php_version: ['7.4', '8.0', '8.1']
     steps:
       -
         name: Checkout
@@ -38,7 +38,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Set Dockerfile directory
-        if: ${{ matrix.php_version == '7.4' || matrix.php_version == '8.0' }}
+        if: ${{ matrix.php_version == '7.4' || matrix.php_version == '8.0' || matrix.php_version == '8.1' }}
         run: echo "DOCKERFILE_DIR=php7.4" >> $GITHUB_ENV
       -
         name: Build and push Docker image for PHP ${{ matrix.php_version }}
@@ -46,7 +46,7 @@ jobs:
         with:
           context: ${{ env.DOCKERFILE_DIR }}/apache/
           push: ${{ github.event_name != 'pull_request' }}
-          tags: hussainweb/drupal-base:php${{ matrix.php_version }}${{ matrix.php_version == '8.0' && ',hussainweb/drupal-base:latest' || '' }}
+          tags: hussainweb/drupal-base:php${{ matrix.php_version }}${{ matrix.php_version == '8.1' && ',hussainweb/drupal-base:latest' || '' }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}-apache-buster
           platforms: linux/amd64,linux/arm64
