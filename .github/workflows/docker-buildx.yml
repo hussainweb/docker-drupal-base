@@ -42,6 +42,7 @@ jobs:
         with:
           username: hussainweb
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+        if: github.event_name != 'pull_request'
       -
         name: Set Dockerfile directory
         if: ${{ matrix.php_version == '8.0' || matrix.php_version == '8.1' || matrix.php_version == '8.2' }}
