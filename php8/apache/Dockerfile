@@ -1,4 +1,4 @@
-ARG PHP_VERSION=7.4-apache-buster
+ARG PHP_VERSION=8.0-apache-bullseye
 # from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}
 
@@ -19,6 +19,7 @@ RUN set -eux; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
 	\
+	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		libbz2-dev \
 		libfreetype6-dev \
@@ -70,7 +71,7 @@ RUN set -eux; \
 	apt-mark auto '.*' > /dev/null; \
 	apt-mark manual $savedAptMark; \
 	ldd "$(php -r 'echo ini_get("extension_dir");')"/*.so \
-		| awk '/=>/ { print $3 }' \
+		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); print so }' \
 		| sort -u \
 		| xargs -r dpkg-query -S \
 		| cut -d: -f1 \
@@ -97,5 +98,5 @@ RUN { \
 
 WORKDIR /var/www/html
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 ENV PATH=${PATH}:/var/www/html/vendor/bin
