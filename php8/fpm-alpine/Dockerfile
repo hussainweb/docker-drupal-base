@@ -79,6 +79,6 @@ RUN { \
 
 WORKDIR /var/www/html
 
-ENV COMPOSER_ALLOW_SUPERUSER 1
+ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 ENV PATH=${PATH}:/var/www/html/vendor/bin
