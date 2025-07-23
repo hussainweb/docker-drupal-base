@@ -17,6 +17,7 @@ jobs:
     strategy:
       matrix:
         php_version: ["8.1", "8.2", "8.3", "8.4"]
+        variant: ["apache-bookworm", "fpm-alpine"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,11 +45,11 @@ jobs:
       - name: Build and push Docker image for PHP ${{ matrix.php_version }}
         uses: docker/build-push-action@v6
         with:
-          context: ${{ env.DOCKERFILE_DIR }}/apache/
+          context: ${{ env.DOCKERFILE_DIR }}/${{ matrix.variant }}/
           push: ${{ github.event_name != 'pull_request' }}
-          tags: hussainweb/drupal-base:php${{ matrix.php_version }}${{ matrix.php_version == '8.4' && ',hussainweb/drupal-base:latest' || '' }}
+          tags: hussainweb/drupal-base:php${{ matrix.php_version }}${{ matrix.variant == "fpm-alpine" && '-alpine' || '' }}${{ matrix.php_version == '8.4' && ',hussainweb/drupal-base:latest' || '' }}
           build-args: |
-            PHP_VERSION=${{ matrix.php_version }}-apache-bullseye
+            PHP_VERSION=${{ matrix.php_version }}-${{ matrix.variant }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
