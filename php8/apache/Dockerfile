@@ -1,4 +1,4 @@
-ARG PHP_VERSION=8.0-apache-bullseye
+ARG PHP_VERSION=8.4-apache-bullseye
 # from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}
 
