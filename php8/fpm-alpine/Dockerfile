@@ -81,7 +81,7 @@ RUN { \
 		echo 'opcache.revalidate_freq=60'; \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini; \
 # Remove the memory limit for the CLI only.
-	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini; \
+	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini;
 
 WORKDIR /var/www/html
 
