@@ -12,6 +12,7 @@ RUN set -eux; \
 	; \
 	\
     apk add --no-cache --virtual .build-deps \
+		autoconf \
 		coreutils \
 		freetype-dev \
 		libjpeg-turbo-dev \
