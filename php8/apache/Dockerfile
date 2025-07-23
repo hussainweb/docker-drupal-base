@@ -6,7 +6,8 @@ FROM php:${PHP_VERSION}
 RUN set -eux; \
 	\
 	if command -v a2enmod; then \
-		a2enmod rewrite; \
+# https://github.com/drupal/drupal/blob/d91d8d0a6d3ffe5f0b6dde8c2fbe81404843edc5/.htaccess (references both mod_expires and mod_rewrite explicitly)
+		a2enmod expires rewrite; \
 	fi; \
 	\
 	apt-get update; \
@@ -71,7 +72,7 @@ RUN set -eux; \
 	apt-mark auto '.*' > /dev/null; \
 	apt-mark manual $savedAptMark; \
 	ldd "$(php -r 'echo ini_get("extension_dir");')"/*.so \
-		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); print so }' \
+		| awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
 		| sort -u \
 		| xargs -r dpkg-query -S \
 		| cut -d: -f1 \
@@ -88,7 +89,6 @@ RUN { \
 		echo 'opcache.interned_strings_buffer=8'; \
 		echo 'opcache.max_accelerated_files=4000'; \
 		echo 'opcache.revalidate_freq=60'; \
-		echo 'opcache.fast_shutdown=1'; \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini; \
 # Remove the memory limit for the CLI only.
 	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini; \
@@ -96,7 +96,16 @@ RUN { \
 	sed -ri -e 's!/var/www/html!/var/www/html/web!g' /etc/apache2/sites-available/*.conf; \
 	sed -ri -e 's!/var/www!/var/www/html/web!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+
+# https://www.drupal.org/node/3298550
+# Drupal now recommends sites enable PHP output buffering by default, if PHP is run as a server module
+# e.g. with Apache's mod_php
+RUN { \
+		echo 'output_buffering=true'; \
+	} > /usr/local/etc/php/conf.d/docker-php-drupal-recommended.ini
+
 WORKDIR /var/www/html
 
+ENV COMPOSER_ALLOW_SUPERUSER 1
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 ENV PATH=${PATH}:/var/www/html/vendor/bin
