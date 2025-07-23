@@ -13,9 +13,11 @@ RUN set -eux; \
 	\
     apk add --no-cache --virtual .build-deps \
 		autoconf \
+		bzip2-dev \
 		coreutils \
 		freetype-dev \
 		libjpeg-turbo-dev \
+		libmemcached-dev \
 		libpng-dev \
 		libwebp-dev \
 		libzip-dev \
@@ -24,6 +26,7 @@ RUN set -eux; \
 		yaml-dev \
 # postgresql-dev is needed for https://bugs.alpinelinux.org/issues/3642
 		postgresql-dev \
+		zstd-libs \
 	; \
 	\
 	docker-php-ext-configure gd \
