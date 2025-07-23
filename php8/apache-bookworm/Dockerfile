@@ -30,8 +30,8 @@ RUN set -eux; \
 		libpng-dev \
 		libpq-dev \
 		libwebp-dev \
+		libyaml-dev \
 		libzip-dev \
-		yaml-dev \
 	; \
 	\
 	docker-php-ext-configure gd \
