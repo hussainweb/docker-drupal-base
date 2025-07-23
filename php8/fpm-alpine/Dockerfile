@@ -18,6 +18,7 @@ RUN set -eux; \
 		libpng-dev \
 		libwebp-dev \
 		libzip-dev \
+		linux-headers \
 		yaml-dev \
 # postgresql-dev is needed for https://bugs.alpinelinux.org/issues/3642
 		postgresql-dev \
