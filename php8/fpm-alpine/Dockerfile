@@ -8,7 +8,6 @@ RUN set -eux; \
 	apk add --no-cache \
 		git \
 		unzip \
-		sendmail \
 		mariadb-client \
 	; \
 	\
