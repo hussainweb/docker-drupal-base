@@ -7,6 +7,7 @@ RUN set -eux; \
 	\
 	apk add --no-cache \
 		git \
+		patch \
 		unzip \
 		mariadb-client \
 	; \
