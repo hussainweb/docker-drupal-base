@@ -17,6 +17,7 @@ RUN set -eux; \
 		bzip2-dev \
 		coreutils \
 		freetype-dev \
+		libavif-dev \
 		libjpeg-turbo-dev \
 		libmemcached-dev \
 		libpng-dev \
@@ -31,6 +32,7 @@ RUN set -eux; \
 	; \
 	\
 	docker-php-ext-configure gd \
+		--with-avif \
 		--with-freetype \
 		--with-jpeg=/usr/include \
 		--with-webp \
