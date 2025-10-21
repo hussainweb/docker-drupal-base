@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         php_version: ["8.1", "8.2", "8.3", "8.4"]
-        variant: ["apache-bookworm", "fpm-alpine"]
+        variant: ["apache-trixie", "apache-bookworm", "fpm-alpine"]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -42,12 +42,34 @@ jobs:
       - name: Set Dockerfile directory
         if: ${{ matrix.php_version == '8.1' || matrix.php_version == '8.2' || matrix.php_version == '8.3' || matrix.php_version == '8.4' }}
         run: echo "DOCKERFILE_DIR=php8" >> $GITHUB_ENV
+      - name: Generate Docker tags
+        id: tags
+        run: |
+          # Base tag with full variant name
+          TAGS="hussainweb/drupal-base:php${{ matrix.php_version }}-${{ matrix.variant }}"
+
+          # For apache-trixie, add the short version tag (e.g., php8.4)
+          if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
+            TAGS="${TAGS},hussainweb/drupal-base:php${{ matrix.php_version }}"
+          fi
+
+          # For fpm-alpine, add the short -alpine tag (e.g., php8.4-alpine)
+          if [ "${{ matrix.variant }}" = "fpm-alpine" ]; then
+            TAGS="${TAGS},hussainweb/drupal-base:php${{ matrix.php_version }}-alpine"
+          fi
+
+          # For the latest PHP version on apache-trixie, add the latest tag
+          if [ "${{ matrix.php_version }}" = "8.4" ] && [ "${{ matrix.variant }}" = "apache-trixie" ]; then
+            TAGS="${TAGS},hussainweb/drupal-base:latest"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
       - name: Build and push Docker image for PHP ${{ matrix.php_version }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ env.DOCKERFILE_DIR }}/${{ matrix.variant }}/
           push: ${{ github.event_name != 'pull_request' }}
-          tags: hussainweb/drupal-base:php${{ matrix.php_version }}${{ matrix.variant == 'fpm-alpine' && '-alpine' || '' }}${{ matrix.php_version == '8.4' && ',hussainweb/drupal-base:latest' || '' }}
+          tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}-${{ matrix.variant }}
           platforms: linux/amd64,linux/arm64
