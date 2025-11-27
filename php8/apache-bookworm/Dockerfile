@@ -42,13 +42,23 @@ RUN set -eux; \
 		--with-webp \
 	; \
 	\
+	# Extract PHP major.minor version from PHP_VERSION (e.g., "8.5" from "8.5-apache-bookworm")
+	PHP_MAJOR_MINOR=$(echo "${PHP_VERSION}" | cut -d'-' -f1); \
+	# Opcache is bundled in PHP 8.5+, so only install it for earlier versions
+	case "$PHP_MAJOR_MINOR" in \
+		8.[5-9]*|[9-9]*.*) \
+			OPCACHE_EXT="" ;; \
+		*) \
+			OPCACHE_EXT="opcache" ;; \
+	esac; \
+	\
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
 		bz2 \
 		exif \
 		gd \
 		intl \
-		opcache \
+		$OPCACHE_EXT \
 		pcntl \
 		pdo_mysql \
 		pdo_pgsql \
