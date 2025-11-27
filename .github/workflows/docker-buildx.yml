@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php_version: ["8.1", "8.2", "8.3", "8.4"]
+        php_version: ["8.1", "8.2", "8.3", "8.4", "8.5"]
         variant: ["apache-trixie", "apache-bookworm", "fpm-alpine"]
     steps:
       - name: Checkout
@@ -40,7 +40,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
         if: github.event_name != 'pull_request'
       - name: Set Dockerfile directory
-        if: ${{ matrix.php_version == '8.1' || matrix.php_version == '8.2' || matrix.php_version == '8.3' || matrix.php_version == '8.4' }}
+        if: ${{ matrix.php_version == '8.1' || matrix.php_version == '8.2' || matrix.php_version == '8.3' || matrix.php_version == '8.4' || matrix.php_version == '8.5' }}
         run: echo "DOCKERFILE_DIR=php8" >> $GITHUB_ENV
       - name: Generate Docker tags
         id: tags
@@ -59,7 +59,7 @@ jobs:
           fi
 
           # For the latest PHP version on apache-trixie, add the latest tag
-          if [ "${{ matrix.php_version }}" = "8.4" ] && [ "${{ matrix.variant }}" = "apache-trixie" ]; then
+          if [ "${{ matrix.php_version }}" = "8.5" ] && [ "${{ matrix.variant }}" = "apache-trixie" ]; then
             TAGS="${TAGS},hussainweb/drupal-base:latest"
           fi
 
