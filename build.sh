@@ -24,7 +24,7 @@ docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/d
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.2 --build-arg PHP_VERSION=8.2-apache-bookworm ${dir}/php8/apache-bookworm/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.3 --build-arg PHP_VERSION=8.3-apache-bookworm ${dir}/php8/apache-bookworm/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.4 --build-arg PHP_VERSION=8.4-apache-bookworm ${dir}/php8/apache-bookworm/
-docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.5 --tag hussainweb/drupal-base:latest --build-arg PHP_VERSION=8.5-apache-bookworm ${dir}/php8/fpm-alpine/
+docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.5 --tag hussainweb/drupal-base:latest --build-arg PHP_VERSION=8.5-apache-bookworm ${dir}/php8/apache-bookworm/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.1-alpine --build-arg PHP_VERSION=8.1-fpm-alpine ${dir}/php8/fpm-alpine/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.2-alpine --build-arg PHP_VERSION=8.2-fpm-alpine ${dir}/php8/fpm-alpine/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.3-alpine --build-arg PHP_VERSION=8.3-fpm-alpine ${dir}/php8/fpm-alpine/
