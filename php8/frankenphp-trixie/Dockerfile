@@ -113,4 +113,4 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 COPY Caddyfile /etc/caddy/Caddyfile
 
 WORKDIR /app
-ENV PATH=${PATH}:/app/web/vendor/bin
+ENV PATH=${PATH}:/app/vendor/bin
