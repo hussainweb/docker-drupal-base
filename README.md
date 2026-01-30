@@ -8,6 +8,7 @@ This repository contains two main variants of the Drupal base image:
 
 - `apache-bookworm`: Based on Debian Bookworm with Apache.
 - `fpm-alpine`: Based on Alpine Linux with PHP-FPM.
+- `frankenphp-trixie`: Based on Debian Trixie with FrankenPHP (experimental).
 
 Choose the image that best fits your needs. The Apache image is a good choice for a simple, all-in-one container, while the FPM image is ideal for use with a separate web server like Nginx.
 
@@ -20,7 +21,7 @@ This image supports the following PHP versions:
 - PHP 8.4
 - PHP 8.5 (latest)
 
-Each version is available in all variants (apache-bookworm, apache-trixie, fpm-alpine).
+Each version is available in all variants (apache-bookworm, apache-trixie, fpm-alpine, frankenphp-trixie).
 
 ### Available Tags
 
@@ -30,6 +31,7 @@ Each version is available in all variants (apache-bookworm, apache-trixie, fpm-a
 - `php8.5-alpine`, `php8.5-fpm-alpine`, `latest-alpine` - PHP 8.5 FPM on Alpine Linux
 - `php8.4`, `php8.3`, `php8.2` - Older PHP versions with Apache on Debian Trixie
 - `php8.4-alpine`, `php8.3-alpine`, `php8.2-alpine` - Older PHP versions FPM on Alpine Linux
+- `php8.5-frankenphp-trixie`, `php8.4-frankenphp-trixie` - FrankenPHP on Debian Trixie
 
 All images support both `linux/amd64` and `linux/arm64` architectures.
 
@@ -97,4 +99,21 @@ server {
         include fastcgi_params;
     }
 }
+```
+
+### FrankenPHP
+
+The FrankenPHP image uses Caddy as the web server. It is configured to serve the Drupal site from `/app/web`.
+
+Here is an example `docker-compose.yml` snippet:
+
+```yaml
+services:
+  drupal:
+    image: hussainweb/drupal-base:php8.4-frankenphp-trixie
+    volumes:
+      - ./path/to/your/drupal/root:/app/web
+    ports:
+      - "8080:80"
+    restart: always
 ```

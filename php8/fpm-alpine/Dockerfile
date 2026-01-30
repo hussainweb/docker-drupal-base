@@ -1,6 +1,6 @@
-ARG PHP_VERSION=8.4-fpm-alpine
+ARG PHP_VERSION=8.4
 # from https://www.drupal.org/docs/system-requirements/php-requirements
-FROM php:${PHP_VERSION}
+FROM php:${PHP_VERSION}-fpm-alpine
 
 # install the PHP extensions we need
 RUN set -eux; \

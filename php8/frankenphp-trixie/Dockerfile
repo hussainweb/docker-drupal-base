@@ -1,15 +1,8 @@
 ARG PHP_VERSION=8.4
-# from https://www.drupal.org/docs/system-requirements/php-requirements
-FROM php:${PHP_VERSION}-apache-trixie
+FROM dunglas/frankenphp:php${PHP_VERSION}-trixie
 
 # install the PHP extensions we need
 RUN set -eux; \
-	\
-	if command -v a2enmod; then \
-# https://github.com/drupal/drupal/blob/d91d8d0a6d3ffe5f0b6dde8c2fbe81404843edc5/.htaccess (references both mod_expires and mod_rewrite explicitly)
-		a2enmod expires rewrite; \
-	fi; \
-	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		git \
@@ -42,7 +35,7 @@ RUN set -eux; \
 		--with-webp \
 	; \
 	\
-	# Extract PHP major.minor version from PHP_VERSION (e.g., "8.5" from "8.5-apache-trixie")
+	# Extract PHP major.minor version from PHP_VERSION
 	PHP_MAJOR_MINOR=$(echo "${PHP_VERSION}" | cut -d'-' -f1); \
 	# Opcache is bundled in PHP 8.5+, so only install it for earlier versions
 	case "$PHP_MAJOR_MINOR" in \
@@ -103,21 +96,21 @@ RUN { \
 		echo 'opcache.revalidate_freq=60'; \
 	} > /usr/local/etc/php/conf.d/opcache-recommended.ini; \
 # Remove the memory limit for the CLI only.
-	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini; \
-# Change docroot since we use Composer Drupal project.
-	sed -ri -e 's!/var/www/html!/var/www/html/web!g' /etc/apache2/sites-available/*.conf; \
-	sed -ri -e 's!/var/www!/var/www/html/web!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
+	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini
 
 # https://www.drupal.org/node/3298550
-# Drupal now recommends sites enable PHP output buffering by default, if PHP is run as a server module
-# e.g. with Apache's mod_php
+# Drupal now recommends sites enable PHP output buffering by default
 RUN { \
 		echo 'output_buffering=true'; \
 	} > /usr/local/etc/php/conf.d/docker-php-drupal-recommended.ini
 
-WORKDIR /var/www/html
-
+# Install Composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
-ENV PATH=${PATH}:/var/www/html/vendor/bin
+
+# FrankenPHP configuration
+# Copy Caddyfile for Drupal configuration
+COPY Caddyfile /etc/caddy/Caddyfile
+
+WORKDIR /app
+ENV PATH=${PATH}:/app/web/vendor/bin
