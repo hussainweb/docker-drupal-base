@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         php_version: ["8.2", "8.3", "8.4", "8.5"]
-        variant: ["apache-trixie", "apache-bookworm", "fpm-alpine"]
+        variant: ["apache-trixie", "apache-bookworm", "fpm-alpine", "frankenphp-trixie"]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -71,7 +71,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
-            PHP_VERSION=${{ matrix.php_version }}-${{ matrix.variant }}
+            PHP_VERSION=${{ matrix.php_version }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
