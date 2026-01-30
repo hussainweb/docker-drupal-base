@@ -15,7 +15,6 @@ Choose the image that best fits your needs. The Apache image is a good choice fo
 
 This image supports the following PHP versions:
 
-- PHP 8.1
 - PHP 8.2
 - PHP 8.3
 - PHP 8.4
@@ -29,8 +28,8 @@ Each version is available in all variants (apache-bookworm, apache-trixie, fpm-a
 - `php8.5-apache-trixie` - PHP 8.5 with Apache on Debian Trixie
 - `php8.5-apache-bookworm` - PHP 8.5 with Apache on Debian Bookworm
 - `php8.5-alpine`, `php8.5-fpm-alpine`, `latest-alpine` - PHP 8.5 FPM on Alpine Linux
-- `php8.4`, `php8.3`, `php8.2`, `php8.1` - Older PHP versions with Apache on Debian Trixie
-- `php8.4-alpine`, `php8.3-alpine`, `php8.2-alpine`, `php8.1-alpine` - Older PHP versions FPM on Alpine Linux
+- `php8.4`, `php8.3`, `php8.2` - Older PHP versions with Apache on Debian Trixie
+- `php8.4-alpine`, `php8.3-alpine`, `php8.2-alpine` - Older PHP versions FPM on Alpine Linux
 
 All images support both `linux/amd64` and `linux/arm64` architectures.
 
