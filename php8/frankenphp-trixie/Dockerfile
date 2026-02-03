@@ -23,6 +23,7 @@ RUN set -eux; \
 		libmemcached-dev \
 		libpng-dev \
 		libpq-dev \
+		libsqlite3-dev \
 		libwebp-dev \
 		libyaml-dev \
 		libzip-dev \
@@ -55,6 +56,7 @@ RUN set -eux; \
 		pcntl \
 		pdo_mysql \
 		pdo_pgsql \
+		pdo_sqlite \
 		sockets \
 		zip \
 	; \

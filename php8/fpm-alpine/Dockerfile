@@ -25,6 +25,7 @@ RUN set -eux; \
 		libzip-dev \
 		linux-headers \
 		make \
+		sqlite-dev \
 		yaml-dev \
 # postgresql-dev is needed for https://bugs.alpinelinux.org/issues/3642
 		postgresql-dev \
@@ -58,6 +59,7 @@ RUN set -eux; \
         pcntl \
         pdo_mysql \
 		pdo_pgsql \
+		pdo_sqlite \
 		sockets \
         zip \
 	; \

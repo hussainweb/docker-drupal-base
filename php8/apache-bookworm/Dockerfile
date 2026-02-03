@@ -22,6 +22,7 @@ RUN set -eux; \
 	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
+		curl \
 		libavif-dev \
 		libbz2-dev \
 		libfreetype6-dev \
@@ -30,10 +31,29 @@ RUN set -eux; \
 		libmemcached-dev \
 		libpng-dev \
 		libpq-dev \
+		libsqlite3-dev \
 		libwebp-dev \
 		libyaml-dev \
 		libzip-dev \
 	; \
+	\
+# Compile and install SQLite 3.47.2 for Drupal 11 compatibility
+	SQLITE_VERSION=3470200; \
+	SQLITE_YEAR=2024; \
+	curl -fsSL "https://www.sqlite.org/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" -o sqlite.tar.gz; \
+	tar -xzf sqlite.tar.gz; \
+	cd sqlite-autoconf-${SQLITE_VERSION}; \
+	./configure --prefix=/usr/local; \
+	make -j"$(nproc)"; \
+	make install; \
+	cd ..; \
+	rm -rf sqlite-autoconf-${SQLITE_VERSION} sqlite.tar.gz; \
+	echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf; \
+	ldconfig; \
+	\
+# Set paths so PHP extensions can find the new SQLite
+	export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH:-}"; \
+	export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"; \
 	\
 	docker-php-ext-configure gd \
 		--with-avif \
@@ -41,6 +61,8 @@ RUN set -eux; \
 		--with-jpeg=/usr \
 		--with-webp \
 	; \
+	\
+	docker-php-ext-configure pdo_sqlite --with-pdo-sqlite=/usr/local; \
 	\
 	# Extract PHP major.minor version from PHP_VERSION (e.g., "8.5" from "8.5-apache-bookworm")
 	PHP_MAJOR_MINOR=$(echo "${PHP_VERSION}" | cut -d'-' -f1); \
@@ -62,6 +84,7 @@ RUN set -eux; \
 		pcntl \
 		pdo_mysql \
 		pdo_pgsql \
+		pdo_sqlite \
 		sockets \
 		zip \
 	; \
@@ -90,6 +113,10 @@ RUN set -eux; \
 		| cut -d: -f1 \
 		| sort -u \
 		| xargs -rt apt-mark manual; \
+	\
+# Remove system libsqlite3 to force use of the newer version in /usr/local
+	apt-get remove -y libsqlite3-0; \
+	ldconfig; \
 	\
 	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
 	rm -rf /var/lib/apt/lists/*
