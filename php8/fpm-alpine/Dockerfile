@@ -10,6 +10,7 @@ RUN set -eux; \
 		patch \
 		unzip \
 		mariadb-client \
+		sqlite \
 	; \
 	\
     apk add --no-cache --virtual .build-deps \

@@ -16,6 +16,7 @@ RUN set -eux; \
 		unzip \
 		sendmail \
 		mariadb-client \
+		sqlite3 \
 	; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
