@@ -238,7 +238,7 @@ services:
     image: hussainweb/drupal-base:php8.5-frankenphp-trixie
     volumes:
       - ./path/to/your/drupal/root:/app
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/frankenphp/Caddyfile
     ports:
       - "8080:80"
     restart: always
@@ -301,7 +301,7 @@ services:
     image: hussainweb/drupal-base:php8.5-frankenphp-trixie
     volumes:
       - ./path/to/your/drupal/root:/app
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/frankenphp/Caddyfile
       - caddy_data:/data
     ports:
       - "80:80"

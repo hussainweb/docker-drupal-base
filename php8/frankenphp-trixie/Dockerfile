@@ -113,7 +113,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 
 # FrankenPHP configuration
 # Copy Caddyfile for Drupal configuration
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY Caddyfile /etc/frankenphp/Caddyfile
 
 WORKDIR /app
 ENV PATH=${PATH}:/app/vendor/bin
