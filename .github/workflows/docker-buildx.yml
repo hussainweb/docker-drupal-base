@@ -11,6 +11,10 @@ on:
 env:
   DOCKERFILE_DIR: php8
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   buildx:
     runs-on: ubuntu-latest
