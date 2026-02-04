@@ -86,65 +86,110 @@ You will need an `nginx.conf` file in your project root. Here is a production-re
 
 ```nginx
 server {
-    listen 80;
-    server_name localhost;
+    listen 80 default_server;
+    server_name localhost _;
     root /var/www/html/web;
-    index index.php index.html;
+    index index.php index.html index.htm;
 
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
-
-    # Gzip compression
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
-
-    # Main location block
-    location / {
-        try_files $uri /index.php?$query_string;
-    }
-
-    # Handle PHP files
-    location ~ \.php$ {
-        fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass drupal:9000;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param PATH_INFO $fastcgi_path_info;
-        fastcgi_buffers 16 16k;
-        fastcgi_buffer_size 32k;
-        include fastcgi_params;
-    }
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
     # Deny access to hidden files
     location ~ /\. {
         deny all;
+        access_log off;
+        log_not_found off;
     }
 
     # Deny access to sensitive files
-    location ~* \.(engine|inc|install|make|module|profile|po|sh|sql|theme|twig|tpl(\.php)?|xtmpl|yml|yaml)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^(\.(?!well-known).*|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock)|web\.config)$|^#.*#$|\.php(~|\.sw[op]|\.bak|\.orig|\.save)$ {
+    location ~* \.(engine|inc|info|install|make|module|profile|test|po|sh|.*sql|theme|tpl(\.php)?|xtmpl|svn|git|bzr|hg|CVS)(~|\.sw[op]|\.bak|\.orig|\.save)?$ {
         deny all;
     }
 
-    # Cache static files
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    # Deny access to backup files
+    location ~ ~$ {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Theme and frontend assets
+    location ~* ^/(themes|core)/.*\.(css|js|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$ {
+        access_log off;
+    }
+
+    # Handle PHP files
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass drupal:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param HTTP_PROXY "";
+        fastcgi_read_timeout 300;
+    }
+
+    # Health check endpoint
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Handle Drupal clean URLs
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Drupal aggregate CSS/JS paths (multisite-safe)
+    # Required since Drupal 10.1 as aggregate files are created on first request.
+    # See https://www.drupal.org/node/3301716
+    location ~* ^/sites/[^/]+/files/(css|js)/ {
+        try_files $uri /index.php?$query_string;
         expires 1y;
         add_header Cache-Control "public, immutable";
-        try_files $uri @rewrite;
+        access_log off;
     }
 
-    location @rewrite {
-        rewrite ^ /index.php;
+    # Image styles (must go through Drupal if missing)
+    location ~* ^/sites/[^/]+/files/styles/ {
+        try_files $uri /index.php?$query_string;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
     }
 
-    # Deny access to vendor directory
-    location ~ /vendor/.*\.php$ {
+    # All other static assets
+    location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Cache HTML files
+    location ~* \.html$ {
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+
+    # Deny access to sensitive directories
+    location ~* ^/(sites/.*/private/|sites/.*/tmp/) {
         deny all;
     }
 }
 ```
 
 **Note:** Adjust `root` path based on your Drupal installation structure. If your Drupal files are directly in the mounted directory, use `/var/www/html`. If you have a `web` subdirectory (as in Composer-based installs), use `/var/www/html/web`.
+
+**Important:** For image style generation and CSS/JS aggregation to work properly, the Drupal source code must be available in **both** the Nginx and PHP-FPM containers. When Nginx receives a request for a missing image style or aggregate file, it passes the request to Drupal, which generates the file. Nginx then needs filesystem access to serve the generated file on subsequent requests.
+
+- **Using volumes:** Mount your Drupal codebase to both containers (as shown in the docker-compose example above).
+- **Using a custom Dockerfile:** If you copy files into the PHP-FPM image instead of mounting them, you must also build a custom Nginx image that contains the same static files (themes, modules, and the `sites/*/files` directory if pre-populated).
 
 ### FrankenPHP
 
