@@ -24,34 +24,60 @@ jobs:
             -t drupal-test:${{ matrix.php_version }}-${{ matrix.variant }} \
             ./php8/${{ matrix.variant }}
 
-      - name: Test Drupal Installation
+      - name: Run test container
         run: |
           WEB_ROOT=/var/www/html
           if [ "${{ matrix.variant }}" = "frankenphp-trixie" ]; then
             WEB_ROOT=/app
           fi
+          echo "WEB_ROOT=${WEB_ROOT}" >> $GITHUB_ENV
 
           PORT=8080
+          echo "PORT=${PORT}" >> $GITHUB_ENV
+
           CONTAINER_NAME=test-container
+          echo "CONTAINER_NAME=${CONTAINER_NAME}" >> $GITHUB_ENV
 
           docker run -d -p $PORT:80 --name $CONTAINER_NAME drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+
+      - name: Install dependencies
+        run: |
+          sleep 10
+          docker exec ${{ env.CONTAINER_NAME }} sh -c "apt-get update && apt-get install -y --no-install-recommends git curl unzip rsync"
+
+      - name: Install Drupal
+        run: |
+          docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "composer create-project drupal/recommended-project drupal_project --no-interaction && rsync -a drupal_project/ . && rm -rf drupal_project"
+          docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "composer require drush/drush"
+
+      - name: Configure Apache
+        if: matrix.variant == 'apache-trixie'
+        run: |
+          docker exec ${{ env.CONTAINER_NAME }} a2enmod rewrite
+          docker exec ${{ env.CONTAINER_NAME }} apache2ctl -k graceful
+
+      - name: Install Drupal site
+        run: |
+          docker exec --workdir ${{ env.WEB_ROOT }}/web ${{ env.CONTAINER_NAME }} sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
           sleep 10
 
-          docker exec $CONTAINER_NAME sh -c "apt-get update && apt-get install -y --no-install-recommends git curl unzip rsync"
+      - name: Verify Drupal installation
+        run: curl -v --fail http://localhost:${{ env.PORT }}
 
-          docker exec --workdir $WEB_ROOT $CONTAINER_NAME sh -c "composer create-project drupal/recommended-project drupal_project --no-interaction && rsync -av drupal_project/ . && rm -rf drupal_project"
-          docker exec --workdir $WEB_ROOT $CONTAINER_NAME sh -c "composer require drush/drush"
-
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "::group::File permissions on sites/default"
+          docker exec ${{ env.CONTAINER_NAME }} ls -la ${{ env.WEB_ROOT }}/web/sites/default
+          echo "::endgroup::"
+          echo "::group::Docker logs"
+          docker logs ${{ env.CONTAINER_NAME }}
+          echo "::endgroup::"
           if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
-            docker exec $CONTAINER_NAME a2enmod rewrite
-            docker exec $CONTAINER_NAME apache2ctl -k graceful
+            echo "::group::Apache error log"
+            docker exec ${{ env.CONTAINER_NAME }} cat /var/log/apache2/error.log
+            echo "::endgroup::"
           fi
-
-          docker exec --workdir $WEB_ROOT/web $CONTAINER_NAME sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
-
-          sleep 10
-          # Use curl to check for a successful installation
-          curl -v --fail http://localhost:$PORT
 
   test-fpm:
     runs-on: ubuntu-latest
@@ -115,16 +141,33 @@ jobs:
       - name: Start services
         run: docker compose -f docker-compose.test.yml up -d --build
 
-      - name: Test Drupal Installation
+      - name: Install Drupal
         run: |
           sleep 10
           docker exec php-fpm sh -c "apk add --no-cache git curl unzip"
           docker exec --workdir /var/www/html php-fpm sh -c "composer create-project drupal/recommended-project . --no-interaction"
           docker exec --workdir /var/www/html php-fpm sh -c "composer require drush/drush"
           docker exec --workdir /var/www/html/web php-fpm sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
-
           sleep 10
-          curl -v --fail http://localhost:8080
+
+      - name: Verify Drupal installation
+        run: curl -v --fail http://localhost:8080
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "::group::File permissions on sites/default"
+          docker exec php-fpm ls -la /var/www/html/web/sites/default
+          echo "::endgroup::"
+          echo "::group::Nginx container logs"
+          docker logs nginx
+          echo "::endgroup::"
+          echo "::group::Nginx error log"
+          docker exec nginx cat /var/log/nginx/error.log
+          echo "::endgroup::"
+          echo "::group::PHP-FPM container logs"
+          docker logs php-fpm
+          echo "::endgroup::"
 
       - name: Stop services
         if: always()
