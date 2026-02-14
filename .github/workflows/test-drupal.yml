@@ -63,11 +63,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install docker-compose
-        run: |
-          set -x
-          sudo apt-get update
-          sudo apt-get install -y docker-compose-plugin
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
 
       - name: Create docker-compose for testing
         run: |
