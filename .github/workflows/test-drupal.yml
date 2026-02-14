@@ -44,14 +44,14 @@ jobs:
 
           if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
             docker exec $CONTAINER_NAME a2enmod rewrite
-            docker exec $CONTAINER_NAME service apache2 restart
+            docker exec $CONTAINER_NAME apache2ctl -k graceful
           fi
 
           docker exec --workdir $WEB_ROOT/web $CONTAINER_NAME sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
 
           sleep 10
           # Use curl to check for a successful installation
-          curl -sI http://localhost:$PORT | grep "HTTP/1.1 200 OK"
+          curl -v --fail http://localhost:$PORT
 
   test-fpm:
     runs-on: ubuntu-latest
@@ -124,7 +124,7 @@ jobs:
           docker exec --workdir /var/www/html/web php-fpm sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
 
           sleep 10
-          curl -sI http://localhost:8080 | grep "HTTP/1.1 200 OK"
+          curl -v --fail http://localhost:8080
 
       - name: Stop services
         if: always()
