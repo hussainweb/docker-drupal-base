@@ -37,9 +37,9 @@ jobs:
           docker run -d -p $PORT:80 --name $CONTAINER_NAME drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
           sleep 10
 
-          docker exec $CONTAINER_NAME sh -c "apt-get update && apt-get install -y --no-install-recommends git curl unzip"
+          docker exec $CONTAINER_NAME sh -c "apt-get update && apt-get install -y --no-install-recommends git curl unzip rsync"
 
-          docker exec --workdir $WEB_ROOT $CONTAINER_NAME sh -c "composer create-project drupal/recommended-project . --no-interaction"
+          docker exec --workdir $WEB_ROOT $CONTAINER_NAME sh -c "composer create-project drupal/recommended-project drupal_project --no-interaction && rsync -av drupal_project/ . && rm -rf drupal_project"
           docker exec --workdir $WEB_ROOT $CONTAINER_NAME sh -c "composer require drush/drush"
 
           if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
