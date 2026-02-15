@@ -64,6 +64,7 @@ jobs:
 
       - name: Install Drupal site
         run: |
+          docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "mkdir -p web/sites/default/files && chmod -R 777 web/sites/default/files"
           docker exec --workdir ${{ env.WEB_ROOT }}/web ${{ env.CONTAINER_NAME }} sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
 
           if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
@@ -169,7 +170,7 @@ jobs:
 
       - name: Install Drupal site
         run: |
-          docker exec --workdir /var/www/html php-fpm sh -c "mkdir -p web/sites/default/files && chown -R www-data:www-data web/sites/default"
+          docker exec --workdir /var/www/html php-fpm sh -c "mkdir -p web/sites/default/files && chmod -R 777 web/sites/default/files"
           docker exec --workdir /var/www/html/web php-fpm sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
           sleep 10
 
