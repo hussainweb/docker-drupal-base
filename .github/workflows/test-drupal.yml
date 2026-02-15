@@ -67,10 +67,6 @@ jobs:
           docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "mkdir -p web/sites/default/files && chmod -R 777 web/sites/default/files"
           docker exec --workdir ${{ env.WEB_ROOT }}/web ${{ env.CONTAINER_NAME }} sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
 
-          if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
-            docker exec ${{ env.CONTAINER_NAME }} chown -R www-data:www-data ${{ env.WEB_ROOT }}
-          fi
-
           sleep 10
 
       - name: Verify Drupal installation
