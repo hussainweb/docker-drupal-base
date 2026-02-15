@@ -50,6 +50,12 @@ jobs:
           docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "composer create-project drupal/recommended-project drupal_project --no-interaction && rsync -a drupal_project/ . && rm -rf drupal_project"
           docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "composer require drush/drush"
 
+      - name: Enable PHP error display for debugging
+        run: |
+          PHP_INI_PATH=$(docker exec ${{ env.CONTAINER_NAME }} php -i | grep "Loaded Configuration File" | cut -d' ' -f5)
+          docker exec ${{ env.CONTAINER_NAME }} sh -c "sed -i 's/display_errors = Off/display_errors = On/g' $PHP_INI_PATH"
+          docker exec ${{ env.CONTAINER_NAME }} sh -c "sed -i 's/error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT/error_reporting = E_ALL/g' $PHP_INI_PATH"
+
       - name: Configure Apache
         if: matrix.variant == 'apache-trixie'
         run: |
@@ -59,6 +65,14 @@ jobs:
       - name: Install Drupal site
         run: |
           docker exec --workdir ${{ env.WEB_ROOT }}/web ${{ env.CONTAINER_NAME }} sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
+
+          if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
+            user="www-data"
+          else
+            user="frankenphp"
+          fi
+
+          docker exec ${{ env.CONTAINER_NAME }} chown -R $user:$user ${{ env.WEB_ROOT }}/web/sites
           sleep 10
 
       - name: Verify Drupal installation
@@ -147,7 +161,18 @@ jobs:
           docker exec php-fpm sh -c "apk add --no-cache git curl unzip"
           docker exec --workdir /var/www/html php-fpm sh -c "composer create-project drupal/recommended-project . --no-interaction"
           docker exec --workdir /var/www/html php-fpm sh -c "composer require drush/drush"
+
+      - name: Enable PHP error display for debugging
+        run: |
+          PHP_INI_PATH=$(docker exec php-fpm php -i | grep "Loaded Configuration File" | cut -d' ' -f5)
+          docker exec php-fpm sh -c "sed -i 's/display_errors = Off/display_errors = On/g' $PHP_INI_PATH"
+          docker exec php-fpm sh -c "sed -i 's/error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT/error_reporting = E_ALL/g' $PHP_INI_PATH"
+          docker exec php-fpm kill -USR2 1
+
+      - name: Install Drupal site
+        run: |
           docker exec --workdir /var/www/html/web php-fpm sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
+          docker exec php-fpm chown -R www-data:www-data /var/www/html/web/sites
           sleep 10
 
       - name: Verify Drupal installation
