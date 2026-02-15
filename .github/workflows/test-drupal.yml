@@ -86,7 +86,7 @@ jobs:
           echo "::endgroup::"
           if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
             echo "::group::Apache error log"
-            docker exec ${{ env.CONTAINER_NAME }} cat /var/log/apache2/error.log
+            docker exec ${{ env.CONTAINER_NAME }} tail -n 100 /var/log/apache2/error.log
             echo "::endgroup::"
           fi
 
@@ -187,7 +187,7 @@ jobs:
           docker logs nginx
           echo "::endgroup::"
           echo "::group::Nginx error log"
-          docker exec nginx cat /var/log/nginx/error.log
+          docker exec nginx tail -n 100 /var/log/nginx/error.log
           echo "::endgroup::"
           echo "::group::PHP-FPM container logs"
           docker logs php-fpm
