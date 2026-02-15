@@ -67,12 +67,9 @@ jobs:
           docker exec --workdir ${{ env.WEB_ROOT }}/web ${{ env.CONTAINER_NAME }} sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
 
           if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
-            user="www-data"
-          else
-            user="frankenphp"
+            docker exec ${{ env.CONTAINER_NAME }} chown -R www-data:www-data ${{ env.WEB_ROOT }}
           fi
 
-          docker exec ${{ env.CONTAINER_NAME }} chown -R $user:$user ${{ env.WEB_ROOT }}/web/sites
           sleep 10
 
       - name: Verify Drupal installation
