@@ -7,13 +7,15 @@ on:
       - main
 
 jobs:
-  test-apache-frankenphp:
+  test-drupal:
+    name: Test on ${{ matrix.variant }} (PHP ${{ matrix.php_version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         php_version: ["8.4", "8.5"]
-        variant: ["apache-trixie", "frankenphp-trixie"]
+        variant: ["apache-trixie", "fpm-alpine", "frankenphp-trixie"]
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -24,181 +26,101 @@ jobs:
             -t drupal-test:${{ matrix.php_version }}-${{ matrix.variant }} \
             ./php8/${{ matrix.variant }}
 
-      - name: Run test container
+      - name: Create test directory structure
         run: |
-          WEB_ROOT=/var/www/html
+          mkdir -p drupal-root
+          mkdir -p test-results
+
+      - name: Download Drupal
+        run: |
+          composer create-project drupal/recommended-project drupal-root --no-interaction --no-dev
+          cd drupal-root
+          composer require drush/drush --no-interaction
+
+      - name: Set up environment variables
+        run: |
           if [ "${{ matrix.variant }}" = "frankenphp-trixie" ]; then
-            WEB_ROOT=/app
+            echo "WEB_ROOT=/app" >> $GITHUB_ENV
+          else
+            echo "WEB_ROOT=/var/www/html" >> $GITHUB_ENV
           fi
-          echo "WEB_ROOT=${WEB_ROOT}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=drupal" >> $GITHUB_ENV
 
-          PORT=8080
-          echo "PORT=${PORT}" >> $GITHUB_ENV
-
-          CONTAINER_NAME=test-container
-          echo "CONTAINER_NAME=${CONTAINER_NAME}" >> $GITHUB_ENV
-
-          docker run -d -p $PORT:80 --name $CONTAINER_NAME drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
-
-      - name: Install dependencies
+      - name: Start Docker containers
         run: |
+          if [ "${{ matrix.variant }}" = "fpm-alpine" ]; then
+            cat <<EOF > docker-compose.yml
+            services:
+              drupal:
+                image: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+                container_name: drupal
+                volumes:
+                  - ./drupal-root:/var/www/html
+              nginx:
+                image: nginx:alpine
+                container_name: nginx
+                ports:
+                  - "8080:80"
+                volumes:
+                  - ./drupal-root:/var/www/html
+                  - ./tests/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                depends_on:
+                  - drupal
+          EOF
+          elif [ "${{ matrix.variant }}" = "frankenphp-trixie" ]; then
+            cat <<EOF > docker-compose.yml
+            services:
+              drupal:
+                image: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+                container_name: drupal
+                volumes:
+                  - ./drupal-root:/app
+                ports:
+                  - "8080:80"
+          EOF
+          else
+            cat <<EOF > docker-compose.yml
+            services:
+              drupal:
+                image: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+                container_name: drupal
+                volumes:
+                  - ./drupal-root:/var/www/html
+                ports:
+                  - "8080:80"
+          EOF
+          fi
+          docker compose up -d
           sleep 10
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "apt-get update && apt-get install -y --no-install-recommends git curl unzip rsync"
+          docker compose ps
 
       - name: Install Drupal
         run: |
-          docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "composer create-project drupal/recommended-project drupal_project --no-interaction && rsync -a drupal_project/ . && rm -rf drupal_project"
-          docker exec --workdir ${{ env.WEB_ROOT }} ${{ env.CONTAINER_NAME }} sh -c "composer require drush/drush"
+          chmod +x tests/install-drupal.sh
+          # The script uses 'docker compose exec -T drupal', which matches our service name 'drupal'
+          ./tests/install-drupal.sh ${{ matrix.variant }} "11.x"
 
-      - name: Enable PHP error display for debugging
+      - name: Run Drupal verification tests
         run: |
-          PHP_INI_PATH=$(docker exec ${{ env.CONTAINER_NAME }} php -i | grep "Loaded Configuration File" | cut -d' ' -f5)
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "sed -i 's/display_errors = Off/display_errors = On/g' $PHP_INI_PATH"
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "sed -i 's/error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT/error_reporting = E_ALL/g' $PHP_INI_PATH"
+          chmod +x tests/verify-drupal.sh
+          ./tests/verify-drupal.sh ${{ matrix.variant }}
 
-      - name: Configure Apache
-        if: matrix.variant == 'apache-trixie'
-        run: |
-          docker exec ${{ env.CONTAINER_NAME }} a2enmod rewrite
-          docker exec ${{ env.CONTAINER_NAME }} apache2ctl -k graceful
-
-      - name: Install Drupal site
-        run: |
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "mkdir -p ${{ env.WEB_ROOT }}/web/sites/default/files && chmod -R 777 ${{ env.WEB_ROOT }}/web/sites/default/files"
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "chmod 777 ${{ env.WEB_ROOT }}/web/sites/default"
-          
-          docker exec --workdir ${{ env.WEB_ROOT }}/web ${{ env.CONTAINER_NAME }} sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
-          
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "chmod 755 ${{ env.WEB_ROOT }}/web/sites/default"
-          docker exec ${{ env.CONTAINER_NAME }} sh -c "chmod -R 777 ${{ env.WEB_ROOT }}/web/sites/default/files"
-
-          sleep 10
-
-      - name: Verify Drupal installation
-        run: curl -v --fail http://localhost:${{ env.PORT }}
-
-      - name: Show logs on failure
+      - name: Capture logs on failure
         if: failure()
         run: |
-          echo "::group::File permissions on sites/default"
-          docker exec ${{ env.CONTAINER_NAME }} ls -la ${{ env.WEB_ROOT }}/web/sites/default
-          echo "::endgroup::"
-          echo "::group::Docker logs"
-          docker logs ${{ env.CONTAINER_NAME }}
-          echo "::endgroup::"
-          if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
-            echo "::group::Apache error log"
-            timeout 10s docker exec ${{ env.CONTAINER_NAME }} tail -n 100 /var/log/apache2/error.log
-            echo "::endgroup::"
-          fi
+          echo "=== Docker Compose Logs ==="
+          docker compose logs
+          echo "=== Container Status ==="
+          docker compose ps
+          docker compose logs > test-results/docker-logs-${{ matrix.variant }}.txt
 
-  test-fpm:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        php_version: ["8.4", "8.5"]
-        variant: ["fpm-alpine"]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Compose
-        uses: docker/setup-compose-action@v1
-
-      - name: Create docker-compose for testing
-        run: |
-          cat <<EOF > docker-compose.test.yml
-          services:
-            php-fpm:
-              build:
-                context: ./php8/fpm-alpine
-                args:
-                  PHP_VERSION: ${{ matrix.php_version }}
-              container_name: php-fpm
-              volumes:
-                - drupal-code:/var/www/html
-            nginx:
-              image: nginx:alpine
-              container_name: nginx
-              ports:
-                - "8080:80"
-              volumes:
-                - drupal-code:/var/www/html
-                - ./nginx.conf:/etc/nginx/conf.d/default.conf
-          volumes:
-            drupal-code:
-          EOF
-
-      - name: Create nginx config
-        run: |
-          cat <<EOF > nginx.conf
-          server {
-              listen 80;
-              server_name localhost;
-              root /var/www/html/web;
-              index index.php;
-
-              location / {
-                  try_files \$uri /index.php?\$query_string;
-              }
-
-              location ~ \.php$ {
-                  fastcgi_pass php-fpm:9000;
-                  fastcgi_index index.php;
-                  include fastcgi_params;
-                  fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
-              }
-          }
-          EOF
-
-      - name: Start services
-        run: docker compose -f docker-compose.test.yml up -d --build
-
-      - name: Install Drupal
-        run: |
-          sleep 10
-          docker exec php-fpm sh -c "apk add --no-cache git curl unzip"
-          docker exec --workdir /var/www/html php-fpm sh -c "composer create-project drupal/recommended-project . --no-interaction"
-          docker exec --workdir /var/www/html php-fpm sh -c "composer require drush/drush"
-
-      - name: Enable PHP error display for debugging
-        run: |
-          PHP_INI_PATH=$(docker exec php-fpm php -i | grep "Loaded Configuration File" | cut -d' ' -f5)
-          docker exec php-fpm sh -c "sed -i 's/display_errors = Off/display_errors = On/g' $PHP_INI_PATH"
-          docker exec php-fpm sh -c "sed -i 's/error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT/error_reporting = E_ALL/g' $PHP_INI_PATH"
-          docker exec php-fpm kill -USR2 1
-          sleep 5
-
-      - name: Install Drupal site
-        run: |
-          docker exec php-fpm sh -c "mkdir -p /var/www/html/web/sites/default/files && chmod -R 777 /var/www/html/web/sites/default/files"
-          docker exec php-fpm sh -c "chmod 777 /var/www/html/web/sites/default"
-
-          docker exec --workdir /var/www/html/web php-fpm sh -c "../vendor/bin/drush site-install standard --db-url=sqlite://sites/default/files/.ht.sqlite --site-name='Test' -y"
-
-          docker exec php-fpm sh -c "chmod 755 /var/www/html/web/sites/default"
-          docker exec php-fpm sh -c "chmod -R 777 /var/www/html/web/sites/default/files"
-          sleep 10
-
-      - name: Verify Drupal installation
-        run: curl -v --fail http://localhost:8080
-
-      - name: Show logs on failure
-        if: failure()
-        run: |
-          echo "::group::File permissions on sites/default"
-          docker exec php-fpm ls -la /var/www/html/web/sites/default
-          echo "::endgroup::"
-          echo "::group::PHP-FPM container logs"
-          docker logs php-fpm
-          echo "::endgroup::"
-          echo "::group::Nginx container logs"
-          docker logs nginx
-          echo "::endgroup::"
-          echo "::group::Nginx error log"
-          timeout 10s docker exec nginx tail -n 100 /var/log/nginx/error.log
-          echo "::endgroup::"
-
-      - name: Stop services
+      - name: Upload test results
         if: always()
-        run: docker compose -f docker-compose.test.yml down --volumes
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.php_version }}-${{ matrix.variant }}
+          path: test-results/
+
+      - name: Clean up
+        if: always()
+        run: docker compose down -v
