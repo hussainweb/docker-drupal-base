@@ -158,6 +158,7 @@ jobs:
           docker exec php-fpm sh -c "apk add --no-cache git curl unzip"
           docker exec --workdir /var/www/html php-fpm sh -c "composer create-project drupal/recommended-project . --no-interaction"
           docker exec --workdir /var/www/html php-fpm sh -c "composer require drush/drush"
+          docker exec php-fpm chown -R www-data:www-data /var/www/html
 
       - name: Enable PHP error display for debugging
         run: |
@@ -165,6 +166,7 @@ jobs:
           docker exec php-fpm sh -c "sed -i 's/display_errors = Off/display_errors = On/g' $PHP_INI_PATH"
           docker exec php-fpm sh -c "sed -i 's/error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT/error_reporting = E_ALL/g' $PHP_INI_PATH"
           docker exec php-fpm kill -USR2 1
+          sleep 5
 
       - name: Install Drupal site
         run: |
