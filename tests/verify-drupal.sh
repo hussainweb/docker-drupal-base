@@ -83,7 +83,10 @@ else
     curl -v "$BASE_URL" 2>&1 | head -50
     echo ""
     echo "--- Checking file permissions ---"
-    docker compose exec -T $SERVICE sh -c "ls -la ${WEBROOT}/web/sites/default/files/" || true
+    # Find the SQLite file and list its permissions
+    docker compose exec -T $SERVICE sh -c "find ${WEBROOT}/web/sites/default/files -name '.ht.sqlite' -exec ls -la {} \;" || true
+    # List permissions of the directory containing the SQLite file
+    docker compose exec -T $SERVICE sh -c "find ${WEBROOT}/web/sites/default/files -name '.ht.sqlite' -exec dirname {} \; | xargs ls -ld" || true
     echo ""
     echo "--- Checking web server user ---"
     docker compose exec -T $SERVICE sh -c 'ps aux | grep -E "(apache|httpd|nginx|php-fpm|frankenphp)" | grep -v grep | head -5' || true
