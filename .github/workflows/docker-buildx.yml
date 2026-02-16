@@ -107,6 +107,12 @@ jobs:
           mkdir -p drupal-root
           mkdir -p test-results
 
+      - name: Start Docker containers
+        run: |
+          docker compose up -d
+          sleep 10
+          docker compose ps
+
       - name: Download Drupal
         run: |
           # Determine Drupal version constraint
@@ -116,20 +122,8 @@ jobs:
             DRUPAL_PROJECT="drupal/recommended-project"
           fi
 
-          # Run composer inside the container to ensure PHP version compatibility
-          # We map the empty drupal-root directory to the container's web root
-          docker run --rm \
-            -v $(pwd)/drupal-root:${WEB_ROOT} \
-            -w ${WEB_ROOT} \
-            -e COMPOSER_ALLOW_SUPERUSER=1 \
-            drupal-test:${{ matrix.php_version }}-${{ matrix.variant }} \
-            /bin/sh -c "composer create-project $DRUPAL_PROJECT . --no-interaction --no-dev && composer require drush/drush --no-interaction"
-
-      - name: Start Docker containers
-        run: |
-          docker compose up -d
-          sleep 10
-          docker compose ps
+          # Run composer inside the running container to ensure PHP version compatibility
+          docker compose exec -T drupal sh -c "composer create-project $DRUPAL_PROJECT . --no-interaction --no-dev && composer require drush/drush --no-interaction"
 
       - name: Install Drupal
         run: |
