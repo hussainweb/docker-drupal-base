@@ -93,6 +93,10 @@ if echo "$DRUSH_STATUS" | grep -q "bootstrap"; then
         # Ensure the directory containing the SQLite file is writable
         # We need to escape the variable for the remote shell execution
         docker compose exec -T $SERVICE sh -c "chmod 777 \"$DB_DIR\""
+
+        # Ensure the SQLite file itself is writable (as requested)
+        echo "Ensuring database file is writable: $DB_PATH"
+        docker compose exec -T $SERVICE sh -c "chmod 666 \"$DB_PATH\""
     fi
 else
     echo "✗ Drupal installation may have issues"
