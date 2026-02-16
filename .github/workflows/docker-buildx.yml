@@ -75,21 +75,6 @@ jobs:
 
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
-      - name: Create test directory structure
-        run: |
-          mkdir -p drupal-root
-          mkdir -p test-results
-
-      - name: Download Drupal
-        run: |
-          if [ "${{ matrix.php_version }}" = "8.2" ]; then
-            composer create-project "drupal/recommended-project:^10" drupal-root --no-interaction --no-dev
-          else
-            composer create-project drupal/recommended-project drupal-root --no-interaction --no-dev
-          fi
-          cd drupal-root
-          composer require drush/drush --no-interaction
-
       - name: Set up environment variables
         run: |
           echo "PHP_VERSION=${{ matrix.php_version }}" >> $GITHUB_ENV
@@ -116,6 +101,29 @@ jobs:
             PHP_VERSION=${{ matrix.php_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Create test directory structure
+        run: |
+          mkdir -p drupal-root
+          mkdir -p test-results
+
+      - name: Download Drupal
+        run: |
+          # Determine Drupal version constraint
+          if [ "${{ matrix.php_version }}" = "8.2" ]; then
+            DRUPAL_PROJECT="drupal/recommended-project:^10"
+          else
+            DRUPAL_PROJECT="drupal/recommended-project"
+          fi
+
+          # Run composer inside the container to ensure PHP version compatibility
+          # We map the empty drupal-root directory to the container's web root
+          docker run --rm \
+            -v $(pwd)/drupal-root:${WEB_ROOT} \
+            -w ${WEB_ROOT} \
+            -e COMPOSER_ALLOW_SUPERUSER=1 \
+            drupal-test:${{ matrix.php_version }}-${{ matrix.variant }} \
+            /bin/sh -c "composer create-project $DRUPAL_PROJECT . --no-interaction --no-dev && composer require drush/drush --no-interaction"
 
       - name: Start Docker containers
         run: |
