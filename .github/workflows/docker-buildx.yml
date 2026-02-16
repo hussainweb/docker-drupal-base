@@ -104,32 +104,22 @@ jobs:
 
       - name: Create test directory structure
         run: |
+          rm -rf drupal-root
           mkdir -p drupal-root
           mkdir -p test-results
+          chmod 777 drupal-root
 
       - name: Start Docker containers
         run: |
           docker compose up -d
-          sleep 10
+          # install-drupal.sh handles waiting for container readiness
           docker compose ps
-
-      - name: Download Drupal
-        run: |
-          # Determine Drupal version constraint
-          if [ "${{ matrix.php_version }}" = "8.2" ]; then
-            DRUPAL_PROJECT="drupal/recommended-project:^10"
-          else
-            DRUPAL_PROJECT="drupal/recommended-project"
-          fi
-
-          # Run composer inside the running container to ensure PHP version compatibility
-          docker compose exec -T drupal sh -c "composer create-project $DRUPAL_PROJECT . --no-interaction --no-dev && composer require drush/drush --no-interaction"
 
       - name: Install Drupal
         run: |
           chmod +x tests/install-drupal.sh
           # The script uses 'docker compose exec -T drupal', which matches our service name 'drupal'
-          if [ "${{ matrix.php_version }}" = "8.2" ]; then
+          if [ "${{ matrix.php_version }}" == "8.2" ]; then
             ./tests/install-drupal.sh ${{ matrix.variant }} "10.x"
           else
             ./tests/install-drupal.sh ${{ matrix.variant }} "11.x"
