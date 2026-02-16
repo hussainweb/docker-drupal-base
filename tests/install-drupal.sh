@@ -2,10 +2,10 @@
 set -e
 
 VARIANT=$1
-DRUPAL_VERSION=$2
+CONSTRAINT=$2
 
 echo "===================================="
-echo "Installing Drupal ${DRUPAL_VERSION} on ${VARIANT}"
+echo "Installing Drupal ${CONSTRAINT} on ${VARIANT}"
 echo "===================================="
 
 # Use service name instead of container name
@@ -35,47 +35,23 @@ for i in {1..12}; do
     sleep 5
 done
 
-# Check if composer.json exists, if not, create project
-HAS_COMPOSER=$(docker compose exec -T $SERVICE sh -c "if [ -f ${WEBROOT}/composer.json ]; then echo 'yes'; else echo 'no'; fi")
+echo "Creating Drupal project..."
 
-if [ "$HAS_COMPOSER" = "no" ]; then
-    echo "composer.json not found. Creating Drupal project..."
+# Clean directory first to ensure composer create-project works
+# We use . to install in current directory
+docker compose exec -T $SERVICE sh -c "rm -rf ${WEBROOT}/* ${WEBROOT}/.* 2>/dev/null || true"
 
-    # Determine version constraint from argument (e.g. 10.x -> ^10)
-    CONSTRAINT=""
-    MAJOR=${DRUPAL_VERSION%%.*}
-    if [[ "$MAJOR" =~ ^[0-9]+$ ]]; then
-        CONSTRAINT="^${MAJOR}"
-    fi
-
-    echo "Selected version constraint: ${CONSTRAINT:-latest}"
-
-    # Clean directory first to ensure composer create-project works
-    # We use . to install in current directory
-    docker compose exec -T $SERVICE sh -c "rm -rf ${WEBROOT}/* ${WEBROOT}/.* 2>/dev/null || true"
-
-    # Create project
-    # We use specific arguments to avoid shell expansion issues
-    if [ -n "$CONSTRAINT" ]; then
-        docker compose exec -T $SERVICE composer create-project drupal/recommended-project . "$CONSTRAINT" --no-interaction --no-dev
-    else
-        docker compose exec -T $SERVICE composer create-project drupal/recommended-project . --no-interaction --no-dev
-    fi
-
-    # Require Drush
-    echo "Requiring Drush..."
-    docker compose exec -T $SERVICE composer require drush/drush --no-interaction
+# Create project
+# We use specific arguments to avoid shell expansion issues
+if [ -n "$CONSTRAINT" ]; then
+    docker compose exec -T $SERVICE composer create-project drupal/recommended-project . "$CONSTRAINT" --no-interaction --no-dev
 else
-    echo "composer.json found. Skipping project creation."
+    docker compose exec -T $SERVICE composer create-project drupal/recommended-project . --no-interaction --no-dev
 fi
 
-# Check if Drupal is already installed
-INSTALLED=$(docker compose exec -T $SERVICE sh -c "if [ -f ${WEBROOT}/web/sites/default/settings.php ] && grep -q 'database' ${WEBROOT}/web/sites/default/settings.php 2>/dev/null; then echo 'yes'; else echo 'no'; fi" || echo "no")
-
-if [ "$INSTALLED" = "yes" ]; then
-    echo "Drupal appears to be already installed. Skipping installation."
-    exit 0
-fi
+# Require Drush
+echo "Requiring Drush..."
+docker compose exec -T $SERVICE composer require drush/drush --no-interaction
 
 # Set proper permissions
 echo "Setting up permissions..."
