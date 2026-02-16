@@ -88,7 +88,13 @@ else
     DRUSH_JSON=$(docker compose exec -T $SERVICE sh -c "cd ${WEBROOT} && vendor/bin/drush status --format=json" 2>/dev/null || echo "{}")
     DB_PATH=$(echo "$DRUSH_JSON" | grep "\"db-name\"" | sed -E 's/.*"db-name": "([^"]+)".*/\1/')
 
-    echo "Detected DB Path: $DB_PATH"
+    # Check if path is relative (doesn't start with /)
+    if [[ "$DB_PATH" != /* ]]; then
+        echo "Relative database path detected: $DB_PATH"
+        DB_PATH="${WEBROOT}/web/${DB_PATH}"
+    fi
+
+    echo "Resolved DB Path: $DB_PATH"
 
     if [ -n "$DB_PATH" ] && [[ "$DB_PATH" != *"null"* ]]; then
         echo "Permissions for DB file:"

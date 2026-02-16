@@ -83,7 +83,14 @@ if echo "$DRUSH_STATUS" | grep -q "bootstrap"; then
     # Format: "db-name": "/path/to/db.sqlite" or "db-name": "/path/to/db.sqlite",
     # We use sed to extract the value inside quotes after "db-name":
     DB_PATH=$(echo "$DRUSH_STATUS" | grep "\"db-name\"" | sed -E 's/.*"db-name": "([^"]+)".*/\1/')
-    echo "Detected database path: $DB_PATH"
+
+    # Check if path is relative (doesn't start with /)
+    if [[ "$DB_PATH" != /* ]]; then
+        echo "Relative database path detected: $DB_PATH"
+        DB_PATH="${WEBROOT}/web/${DB_PATH}"
+    fi
+
+    echo "Resolved database path: $DB_PATH"
 
     if [ -n "$DB_PATH" ] && [[ "$DB_PATH" != *"null"* ]]; then
         # Get directory containing the database
