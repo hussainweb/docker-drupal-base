@@ -61,7 +61,7 @@ docker compose exec -T $SERVICE sh -c "chmod 777 ${WEBROOT}/web/sites/default"
 # Install Drupal using drush with SQLite database file
 echo "Installing Drupal using drush with SQLite..."
 docker compose exec -T $SERVICE sh -c "cd ${WEBROOT} && vendor/bin/drush site:install minimal \
-    --db-url="sqlite://localhost/sites/default/files/.ht.sqlite" \
+    --db-url="sqlite://sites/default/files/.ht.sqlite" \
     --site-name="Drupal Test Site" \
     --account-name=admin \
     --account-pass=admin \
