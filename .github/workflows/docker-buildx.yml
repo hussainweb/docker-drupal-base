@@ -82,7 +82,11 @@ jobs:
 
       - name: Download Drupal
         run: |
-          composer create-project drupal/recommended-project drupal-root --no-interaction --no-dev
+          if [ "${{ matrix.php_version }}" = "8.2" ]; then
+            composer create-project "drupal/recommended-project:^10" drupal-root --no-interaction --no-dev
+          else
+            composer create-project drupal/recommended-project drupal-root --no-interaction --no-dev
+          fi
           cd drupal-root
           composer require drush/drush --no-interaction
 
@@ -123,7 +127,11 @@ jobs:
         run: |
           chmod +x tests/install-drupal.sh
           # The script uses 'docker compose exec -T drupal', which matches our service name 'drupal'
-          ./tests/install-drupal.sh ${{ matrix.variant }} "11.x"
+          if [ "${{ matrix.php_version }}" = "8.2" ]; then
+            ./tests/install-drupal.sh ${{ matrix.variant }} "10.x"
+          else
+            ./tests/install-drupal.sh ${{ matrix.variant }} "11.x"
+          fi
 
       - name: Run Drupal verification tests
         run: |
