@@ -82,11 +82,25 @@ else
     echo "--- Fetching page content with error details ---"
     curl -v "$BASE_URL" 2>&1 | head -50
     echo ""
-    echo "--- Checking file permissions ---"
-    # Find the SQLite file and list its permissions
-    docker compose exec -T $SERVICE sh -c "find ${WEBROOT}/web/sites/default/files -name '.ht.sqlite' -exec ls -la {} \;" || true
-    # List permissions of the directory containing the SQLite file
-    docker compose exec -T $SERVICE sh -c "find ${WEBROOT}/web/sites/default/files -name '.ht.sqlite' -exec dirname {} \; | xargs ls -ld" || true
+    echo "--- Checking SQLite database permissions (via drush status) ---"
+    # Get DB path from drush status JSON output
+    # Format: "db-name": "/path/to/db.sqlite" or "db-name": "/path/to/db.sqlite",
+    DRUSH_JSON=$(docker compose exec -T $SERVICE sh -c "cd ${WEBROOT} && vendor/bin/drush status --format=json" 2>/dev/null || echo "{}")
+    DB_PATH=$(echo "$DRUSH_JSON" | grep "\"db-name\"" | sed -E 's/.*"db-name": "([^"]+)".*/\1/')
+
+    echo "Detected DB Path: $DB_PATH"
+
+    if [ -n "$DB_PATH" ] && [[ "$DB_PATH" != *"null"* ]]; then
+        echo "Permissions for DB file:"
+        docker compose exec -T $SERVICE sh -c "ls -la \"$DB_PATH\"" || echo "File not found"
+
+        DB_DIR=$(dirname "$DB_PATH")
+        echo "Permissions for DB directory ($DB_DIR):"
+        docker compose exec -T $SERVICE sh -c "ls -ld \"$DB_DIR\"" || echo "Directory not found"
+    else
+        echo "Could not determine DB path from drush status"
+        echo "Raw drush output: $DRUSH_JSON"
+    fi
     echo ""
     echo "--- Checking web server user ---"
     docker compose exec -T $SERVICE sh -c 'ps aux | grep -E "(apache|httpd|nginx|php-fpm|frankenphp)" | grep -v grep | head -5' || true
@@ -105,9 +119,6 @@ else
     echo ""
     echo "--- Checking Drupal watchdog errors ---"
     docker compose exec -T $SERVICE sh -c "cd ${WEBROOT} && vendor/bin/drush watchdog:show --severity=Error --count=10 2>&1" || true
-    echo ""
-    echo "--- Checking SQLite database permissions ---"
-    docker compose exec -T $SERVICE sh -c "ls -la ${WEBROOT}/web/sites/default/files/.ht.sqlite* 2>/dev/null" || true
     echo ""
     echo "--- Checking PHP modules loaded via web server ---"
     docker compose exec -T $SERVICE sh -c "echo '<?php header(\"Content-Type: text/plain\"); foreach (get_loaded_extensions() as \$ext) { echo \$ext . \"\\n\"; }' > ${WEBROOT}/web/check_modules.php" || true
