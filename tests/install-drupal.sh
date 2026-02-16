@@ -78,6 +78,22 @@ echo "$DRUSH_STATUS"
 # Check if bootstrap was successful
 if echo "$DRUSH_STATUS" | grep -q "bootstrap"; then
     echo "✓ Drupal installation completed successfully"
+
+    # Extract SQLite database path from drush status output
+    # Format: "db-name": "/path/to/db.sqlite" or "db-name": "/path/to/db.sqlite",
+    # We use sed to extract the value inside quotes after "db-name":
+    DB_PATH=$(echo "$DRUSH_STATUS" | grep "\"db-name\"" | sed -E 's/.*"db-name": "([^"]+)".*/\1/')
+    echo "Detected database path: $DB_PATH"
+
+    if [ -n "$DB_PATH" ] && [[ "$DB_PATH" != *"null"* ]]; then
+        # Get directory containing the database
+        # Note: logic runs locally, so DB_DIR will be a local path string, which matches the container path structure
+        DB_DIR=$(dirname "$DB_PATH")
+        echo "Ensuring database directory is writable: $DB_DIR"
+        # Ensure the directory containing the SQLite file is writable
+        # We need to escape the variable for the remote shell execution
+        docker compose exec -T $SERVICE sh -c "chmod 777 \"$DB_DIR\""
+    fi
 else
     echo "✗ Drupal installation may have issues"
     exit 1
