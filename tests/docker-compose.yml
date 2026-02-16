@@ -1,0 +1,8 @@
+services:
+  drupal:
+    image: drupal-test:${PHP_VERSION}-${VARIANT}
+    container_name: drupal
+    volumes:
+      - ../drupal-root:${WEB_ROOT}
+    ports:
+      - "8080:80"
