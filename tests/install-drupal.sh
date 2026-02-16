@@ -2,10 +2,10 @@
 set -e
 
 VARIANT=$1
-DRUPAL_VERSION=$2
+CONSTRAINT=$2
 
 echo "===================================="
-echo "Installing Drupal ${DRUPAL_VERSION} on ${VARIANT}"
+echo "Installing Drupal ${CONSTRAINT} on ${VARIANT}"
 echo "===================================="
 
 # Use service name instead of container name
@@ -35,13 +35,23 @@ for i in {1..12}; do
     sleep 5
 done
 
-# Check if Drupal is already installed
-INSTALLED=$(docker compose exec -T $SERVICE sh -c "if [ -f ${WEBROOT}/web/sites/default/settings.php ] && grep -q 'database' ${WEBROOT}/web/sites/default/settings.php 2>/dev/null; then echo 'yes'; else echo 'no'; fi" || echo "no")
+echo "Creating Drupal project..."
 
-if [ "$INSTALLED" = "yes" ]; then
-    echo "Drupal appears to be already installed. Skipping installation."
-    exit 0
+# Clean directory first to ensure composer create-project works
+# We use . to install in current directory
+docker compose exec -T $SERVICE sh -c "rm -rf ${WEBROOT}/* ${WEBROOT}/.* 2>/dev/null || true"
+
+# Create project
+# We use specific arguments to avoid shell expansion issues
+if [ -n "$CONSTRAINT" ]; then
+    docker compose exec -T $SERVICE composer create-project drupal/recommended-project . "$CONSTRAINT" --no-interaction --no-dev
+else
+    docker compose exec -T $SERVICE composer create-project drupal/recommended-project . --no-interaction --no-dev
 fi
+
+# Require Drush
+echo "Requiring Drush..."
+docker compose exec -T $SERVICE composer require drush/drush --no-interaction
 
 # Set proper permissions
 echo "Setting up permissions..."
@@ -51,7 +61,7 @@ docker compose exec -T $SERVICE sh -c "chmod 777 ${WEBROOT}/web/sites/default"
 # Install Drupal using drush with SQLite database file
 echo "Installing Drupal using drush with SQLite..."
 docker compose exec -T $SERVICE sh -c "cd ${WEBROOT} && vendor/bin/drush site:install minimal \
-    --db-url="sqlite://localhost/sites/default/files/.ht.sqlite" \
+    --db-url="sqlite://sites/default/files/.ht.sqlite" \
     --site-name="Drupal Test Site" \
     --account-name=admin \
     --account-pass=admin \
@@ -68,6 +78,33 @@ echo "$DRUSH_STATUS"
 # Check if bootstrap was successful
 if echo "$DRUSH_STATUS" | grep -q "bootstrap"; then
     echo "✓ Drupal installation completed successfully"
+
+    # Extract SQLite database path from drush status output
+    # Format: "db-name": "/path/to/db.sqlite" or "db-name": "/path/to/db.sqlite",
+    # We use sed to extract the value inside quotes after "db-name":
+    DB_PATH=$(echo "$DRUSH_STATUS" | grep "\"db-name\"" | sed -E 's/.*"db-name": "([^"]+)".*/\1/')
+
+    # Check if path is relative (doesn't start with /)
+    if [[ "$DB_PATH" != /* ]]; then
+        echo "Relative database path detected: $DB_PATH"
+        DB_PATH="${WEBROOT}/web/${DB_PATH}"
+    fi
+
+    echo "Resolved database path: $DB_PATH"
+
+    if [ -n "$DB_PATH" ] && [[ "$DB_PATH" != *"null"* ]]; then
+        # Get directory containing the database
+        # Note: logic runs locally, so DB_DIR will be a local path string, which matches the container path structure
+        DB_DIR=$(dirname "$DB_PATH")
+        echo "Ensuring database directory is writable: $DB_DIR"
+        # Ensure the directory containing the SQLite file is writable
+        # We need to escape the variable for the remote shell execution
+        docker compose exec -T $SERVICE sh -c "chmod 777 \"$DB_DIR\""
+
+        # Ensure the SQLite file itself is writable (as requested)
+        echo "Ensuring database file is writable: $DB_PATH"
+        docker compose exec -T $SERVICE sh -c "chmod 666 \"$DB_PATH\""
+    fi
 else
     echo "✗ Drupal installation may have issues"
     exit 1

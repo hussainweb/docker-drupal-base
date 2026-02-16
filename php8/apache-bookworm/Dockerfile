@@ -44,7 +44,7 @@ RUN set -eux; \
 	curl -fsSL "https://www.sqlite.org/${SQLITE_YEAR}/sqlite-autoconf-${SQLITE_VERSION}.tar.gz" -o sqlite.tar.gz; \
 	tar -xzf sqlite.tar.gz; \
 	cd sqlite-autoconf-${SQLITE_VERSION}; \
-	./configure --prefix=/usr/local; \
+	./configure --prefix=/usr/local CPPFLAGS="-DSQLITE_ENABLE_COLUMN_METADATA=1"; \
 	make -j"$(nproc)"; \
 	make install; \
 	cd ..; \

@@ -3,11 +3,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "5 4 1,15 * *"
-  workflow_run:
-    workflows: ["Test Drupal Installation"]
-    branches: [main]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+  pull_request:
 
 env:
   DOCKERFILE_DIR: php8
@@ -18,7 +17,6 @@ concurrency:
 
 jobs:
   buildx:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -50,9 +48,7 @@ jobs:
         with:
           username: hussainweb
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        if: |
-          (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') ||
-          (github.event_name != 'workflow_run' && github.ref == 'refs/heads/main')
+        if: github.ref == 'refs/heads/main'
       - name: Set Dockerfile directory
         if: ${{ matrix.php_version == '8.2' || matrix.php_version == '8.3' || matrix.php_version == '8.4' || matrix.php_version == '8.5' }}
         run: echo "DOCKERFILE_DIR=php8" >> $GITHUB_ENV
@@ -78,13 +74,88 @@ jobs:
           fi
 
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Set up environment variables
+        run: |
+          echo "PHP_VERSION=${{ matrix.php_version }}" >> $GITHUB_ENV
+          echo "VARIANT=${{ matrix.variant }}" >> $GITHUB_ENV
+          if [ "${{ matrix.variant }}" = "frankenphp-trixie" ]; then
+            echo "WEB_ROOT=/app" >> $GITHUB_ENV
+          else
+            echo "WEB_ROOT=/var/www/html" >> $GITHUB_ENV
+          fi
+          if [ "${{ matrix.variant }}" = "fpm-alpine" ]; then
+            echo "COMPOSE_FILE=tests/docker-compose.fpm.yml" >> $GITHUB_ENV
+          else
+            echo "COMPOSE_FILE=tests/docker-compose.yml" >> $GITHUB_ENV
+          fi
+          echo "CONTAINER_NAME=drupal" >> $GITHUB_ENV
+
+      - name: Build and load Docker image for testing
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.DOCKERFILE_DIR }}/${{ matrix.variant }}/
+          load: true
+          tags: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+          build-args: |
+            PHP_VERSION=${{ matrix.php_version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create test directory structure
+        run: |
+          rm -rf drupal-root
+          mkdir -p drupal-root
+          mkdir -p test-results
+          chmod 777 drupal-root
+
+      - name: Start Docker containers
+        run: |
+          docker compose up -d
+          # install-drupal.sh handles waiting for container readiness
+          docker compose ps
+
+      - name: Install Drupal
+        run: |
+          chmod +x tests/install-drupal.sh
+          # The script uses 'docker compose exec -T drupal', which matches our service name 'drupal'
+          if [ "${{ matrix.php_version }}" == "8.2" ]; then
+            ./tests/install-drupal.sh ${{ matrix.variant }} "^10"
+          else
+            ./tests/install-drupal.sh ${{ matrix.variant }} "^11"
+          fi
+
+      - name: Run Drupal verification tests
+        run: |
+          chmod +x tests/verify-drupal.sh
+          ./tests/verify-drupal.sh ${{ matrix.variant }}
+
+      - name: Capture logs
+        if: failure()
+        run: |
+          echo "=== Docker Compose Logs ==="
+          docker compose logs
+          echo "=== Container Status ==="
+          docker compose ps
+          docker compose logs > test-results/docker-logs-${{ matrix.variant }}.txt
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.php_version }}-${{ matrix.variant }}
+          path: test-results/
+          if-no-files-found: ignore
+
+      - name: Clean up
+        if: always()
+        run: docker compose down -v
+
       - name: Build and push Docker image for PHP ${{ matrix.php_version }}
         uses: docker/build-push-action@v6
         with:
           context: ${{ env.DOCKERFILE_DIR }}/${{ matrix.variant }}/
-          push: |
-            ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') ||
-                (github.event_name != 'workflow_run' && github.ref == 'refs/heads/main') }}
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
