@@ -6,7 +6,19 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "php8/**"
+      - "tests/**"
+      - "build.sh"
+      - "clean.sh"
+      - ".github/workflows/docker-buildx.yml"
   pull_request:
+    paths:
+      - "php8/**"
+      - "tests/**"
+      - "build.sh"
+      - "clean.sh"
+      - ".github/workflows/docker-buildx.yml"
 
 env:
   DOCKERFILE_DIR: php8
