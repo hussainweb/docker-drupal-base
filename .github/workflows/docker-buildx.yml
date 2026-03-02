@@ -28,6 +28,9 @@ jobs:
             "fpm-alpine",
             "frankenphp-trixie",
           ]
+        exclude:
+          - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
+          - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
