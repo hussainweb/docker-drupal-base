@@ -22,7 +22,7 @@ This image supports the following PHP versions:
 - PHP 8.4
 - PHP 8.5 (latest)
 
-Each version is available in all variants (apache-bookworm, apache-trixie, fpm-alpine, frankenphp-trixie).
+PHP 8.2–8.5 are available in the `apache-trixie`, `apache-bookworm`, and `fpm-alpine` variants. The `frankenphp-trixie` variant is published for PHP 8.4 and 8.5 only.
 
 ### Available Tags
 
