@@ -202,7 +202,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Update Docker Hub description
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: hussainweb
           password: ${{ secrets.DOCKERHUB_TOKEN }}
