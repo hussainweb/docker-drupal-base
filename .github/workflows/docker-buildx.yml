@@ -34,6 +34,9 @@ jobs:
             "fpm-alpine",
             "frankenphp-trixie",
           ]
+        # On pull_request and scheduled runs, skip PHP 8.2 and 8.3 to keep
+        # CI fast. They are only built on direct pushes to main and on
+        # workflow_dispatch. The 'none' fallback is a no-op exclude.
         exclude:
           - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
           - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
@@ -58,9 +61,6 @@ jobs:
           username: hussainweb
           password: ${{ secrets.DOCKERHUB_TOKEN }}
         if: github.ref == 'refs/heads/main'
-      - name: Set Dockerfile directory
-        if: ${{ matrix.php_version == '8.2' || matrix.php_version == '8.3' || matrix.php_version == '8.4' || matrix.php_version == '8.5' }}
-        run: echo "DOCKERFILE_DIR=php8" >> $GITHUB_ENV
       - name: Generate Docker tags
         id: tags
         run: |
@@ -108,8 +108,9 @@ jobs:
           tags: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+          # cache-from only: the multi-arch publish step below owns
+          # cache-to so we don't write near-identical caches twice.
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Create test directory structure
         run: |
@@ -160,6 +161,16 @@ jobs:
         if: always()
         run: docker compose down -v
 
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          vuln-type: os,library
+
       - name: Build and push Docker image for PHP ${{ matrix.php_version }}
         uses: docker/build-push-action@v7
         with:
@@ -169,5 +180,24 @@ jobs:
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
           platforms: linux/amd64,linux/arm64
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  dockerhub-readme:
+    name: Sync Docker Hub description
+    needs: buildx
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: hussainweb
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: hussainweb/drupal-base
+          short-description: "Drupal-ready PHP base images (Apache/FPM/FrankenPHP) for CI, dev, and production."
+          readme-filepath: ./README.md
