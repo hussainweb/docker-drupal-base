@@ -2,6 +2,13 @@ ARG PHP_VERSION=8.4
 # from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}-apache-trixie
 
+ARG PHP_VERSION
+LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drupal-base" \
+      org.opencontainers.image.url="https://hub.docker.com/r/hussainweb/drupal-base" \
+      org.opencontainers.image.title="Drupal base (apache-trixie)" \
+      org.opencontainers.image.description="Drupal-ready PHP ${PHP_VERSION} runtime on Debian Trixie with Apache" \
+      org.opencontainers.image.version="${PHP_VERSION}"
+
 # install the PHP extensions we need
 RUN set -eux; \
 	\
@@ -124,3 +131,6 @@ WORKDIR /var/www/html
 ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 ENV PATH=${PATH}:/var/www/html/vendor/bin
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+	CMD ["php", "-r", "exit(@fsockopen('127.0.0.1', 80, $e, $s, 2) ? 0 : 1);"]
