@@ -166,14 +166,18 @@ jobs:
         run: docker compose down -v
 
       - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.28.0
+        # anchore/scan-action v7.4.0, pinned by commit SHA. SHA pinning
+        # is mandatory here: the aquasecurity/trivy-action tags were
+        # hijacked in a March 2026 supply chain attack (75 of 76 tags
+        # force-pushed to an infostealer), so we standardised on
+        # SHA-pinned actions for any third-party security tooling.
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
         with:
-          image-ref: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
-          format: table
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "1"
-          vuln-type: os,library
+          image: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+          severity-cutoff: high
+          only-fixed: true
+          fail-build: true
+          output-format: table
 
       - name: Build and push Docker image for PHP ${{ matrix.php_version }}
         uses: docker/build-push-action@v7
