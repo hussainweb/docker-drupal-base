@@ -6,13 +6,17 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "php8/**"
-      - "tests/**"
+    paths-ignore:
+      - "**/*.md"
+      - ".github/dependabot.yml"
+      - "build.sh"
+      - "clean.sh"
   pull_request:
-    paths:
-      - "php8/**"
-      - "tests/**"
+    paths-ignore:
+      - "**/*.md"
+      - ".github/dependabot.yml"
+      - "build.sh"
+      - "clean.sh"
 
 env:
   DOCKERFILE_DIR: php8
