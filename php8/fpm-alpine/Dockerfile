@@ -12,6 +12,10 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
 # install the PHP extensions we need
 RUN set -eux; \
 	\
+# pull in any security updates from Alpine that the upstream base image
+# hasn't picked up yet (e.g. curl/libcurl HIGH CVEs flagged by Grype)
+	apk upgrade --no-cache; \
+	\
 	apk add --no-cache \
 		git \
 		patch \

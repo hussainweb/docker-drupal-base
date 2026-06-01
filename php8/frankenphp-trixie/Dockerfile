@@ -11,6 +11,9 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
 # install the PHP extensions we need
 RUN set -eux; \
 	apt-get update; \
+# pull in any security updates from Debian that the upstream base
+# image hasn't picked up yet
+	apt-get -y upgrade; \
 	apt-get install -y --no-install-recommends \
 		git \
 		unzip \
