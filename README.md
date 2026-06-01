@@ -4,13 +4,14 @@ This image provides a basic runtime for Drupal projects. It's designed for CI bu
 
 ## Image Variants
 
-This repository contains two main variants of the Drupal base image:
+This repository publishes four variants of the Drupal base image:
 
-- `apache-bookworm`: Based on Debian Bookworm with Apache.
-- `fpm-alpine`: Based on Alpine Linux with PHP-FPM.
-- `frankenphp-trixie`: Based on Debian Trixie with FrankenPHP (experimental).
+- `apache-trixie` (default): Based on Debian Trixie with Apache. Backs the `latest` and `php8.X` tags.
+- `apache-bookworm`: Based on Debian Bookworm with Apache. Kept for users on older hosts; not the recommended default.
+- `fpm-alpine`: Based on Alpine Linux with PHP-FPM. Pair with a separate web server like Nginx.
+- `frankenphp-trixie`: Based on Debian Trixie with FrankenPHP (Caddy + PHP in one process).
 
-Choose the image that best fits your needs. The Apache image is a good choice for a simple, all-in-one container, while the FPM image is ideal for use with a separate web server like Nginx.
+Choose the image that best fits your needs. The Apache image is a good choice for a simple, all-in-one container, the FPM image is ideal for use with a separate web server like Nginx, and FrankenPHP offers a modern single-binary alternative with built-in HTTPS support.
 
 ## Supported PHP Versions
 
@@ -212,19 +213,49 @@ services:
 
 #### Default Caddyfile
 
-The image includes a default Caddyfile optimized for Drupal:
+The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive paths, denies PHP execution from upload directories, and sets long-lived cache headers on static assets:
 
 ```caddyfile
 {
-    frankenphp
-    order php_server before file_server
+	frankenphp
+	order php_server before file_server
 }
 
 :80 {
-    encode zstd gzip
-    root * /app/web
-    php_server
-    file_server
+	encode zstd br gzip
+	root * /app/web
+
+	# Block hidden PHP files
+	@hiddenPhp path_regexp \..*/.*.php$
+	error @hiddenPhp 403
+
+	# Block PHP in vendor
+	@vendorPhp path_regexp /vendor/.*\.php$
+	error @vendorPhp 404
+
+	# Block PHP in files directories
+	@filesPhp path_regexp ^/sites/[^/]+/files/.*\.php$
+	error @filesPhp 404
+
+	# Block private directories
+	@private path_regexp ^/sites/.*/private/
+	error @private 403
+
+	# Block sensitive files (allow .well-known)
+	@protected {
+		not path /.well-known*
+		path_regexp \.(engine|inc|install|make|module|profile|po|sh|.*sql|theme|twig|tpl(\.php)?|xtmpl|yml)(~|\.sw[op]|\.bak|\.orig|\.save)?$|^/(\..+|Entries.*|Repository|Root|Tag|Template|composer\.(json|lock)|web\.config|yarn\.lock|package\.json)$|^\/#.*#$|\.php(~|\.sw[op]|\.bak|\.orig|\.save)$
+	}
+	error @protected 403
+
+	# Static assets caching
+	@static {
+		file
+		path *.avif *.css *.eot *.gif *.gz *.ico *.jpg *.jpeg *.js *.otf *.pdf *.png *.svg *.ttf *.webp *.woff *.woff2
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	php_server
 }
 ```
 
