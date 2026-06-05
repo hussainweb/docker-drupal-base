@@ -36,9 +36,9 @@ permissions:
 jobs:
   check-activity:
     name: Check recent registry push
-    # Only runs on schedule; on push / workflow_dispatch / pull_request
-    # this job is skipped and `build` proceeds unconditionally.
-    if: github.event_name == 'schedule'
+    # Always runs so downstream jobs can reference its output without
+    # needing `!cancelled()` / skipped-result gymnastics. On non-schedule
+    # events the step short-circuits to should_run=true immediately.
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
@@ -46,8 +46,15 @@ jobs:
       - name: Compare Docker Hub last_updated against threshold
         id: check
         env:
+          EVENT_NAME: ${{ github.event_name }}
           THRESHOLD_DAYS: "10"
         run: |
+          # Only schedule runs gate on registry activity; every other
+          # trigger proceeds unconditionally.
+          if [ "$EVENT_NAME" != "schedule" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Scheduled runs fire on the 1st and 15th. A push to main that
           # lands within ~5-6 days of either date would have already
           # rebuilt the whole matrix with fresh OS packages, so the
@@ -77,9 +84,7 @@ jobs:
   build:
     name: Build ${{ matrix.php_version }} ${{ matrix.variant }} (${{ matrix.arch.name }})
     needs: [check-activity]
-    # `!cancelled()` lets this job run even when `check-activity` was
-    # skipped (non-schedule events). On schedule, defer to its output.
-    if: ${{ !cancelled() && (needs.check-activity.result == 'skipped' || needs.check-activity.outputs.should_run == 'true') }}
+    if: needs.check-activity.outputs.should_run == 'true'
     runs-on: ${{ matrix.arch.runs_on }}
     strategy:
       fail-fast: false
