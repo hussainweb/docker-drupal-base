@@ -34,8 +34,52 @@ permissions:
   contents: read
 
 jobs:
+  check-activity:
+    name: Check recent registry push
+    # Only runs on schedule; on push / workflow_dispatch / pull_request
+    # this job is skipped and `build` proceeds unconditionally.
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Compare Docker Hub last_updated against threshold
+        id: check
+        env:
+          THRESHOLD_DAYS: "10"
+        run: |
+          # Scheduled runs fire on the 1st and 15th. A push to main that
+          # lands within ~5-6 days of either date would have already
+          # rebuilt the whole matrix with fresh OS packages, so the
+          # scheduled refresh has nothing meaningful to pick up. 10 days
+          # is a middle-ground threshold: it suppresses the "push on the
+          # 25th -> rebuild on the 1st" case (6 days) while still letting
+          # the 15th refresh proceed after a push on the 2nd (13 days).
+          # Any failure to fetch the timestamp defaults to running the
+          # build -- we prefer a wasted run over a silently missed one.
+          last=$(curl -sf --max-time 30 \
+            "https://hub.docker.com/v2/repositories/${IMAGE_NAME}/" \
+            | jq -r .last_updated)
+          if [ -z "$last" ] || [ "$last" = "null" ]; then
+            echo "Could not fetch last_updated from Docker Hub; running the build."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          days=$(( ( $(date -u +%s) - $(date -u -d "$last" +%s) ) / 86400 ))
+          echo "Last registry push: $last (${days} days ago, threshold ${THRESHOLD_DAYS})"
+          if [ "$days" -ge "$THRESHOLD_DAYS" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping scheduled rebuild: registry was updated ${days} days ago."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build ${{ matrix.php_version }} ${{ matrix.variant }} (${{ matrix.arch.name }})
+    needs: [check-activity]
+    # `!cancelled()` lets this job run even when `check-activity` was
+    # skipped (non-schedule events). On schedule, defer to its output.
+    if: ${{ !cancelled() && (needs.check-activity.result == 'skipped' || needs.check-activity.outputs.should_run == 'true') }}
     runs-on: ${{ matrix.arch.runs_on }}
     strategy:
       fail-fast: false
