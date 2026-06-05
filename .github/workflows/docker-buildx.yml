@@ -26,6 +26,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege default: every job only needs to read the repo
+# (checkout + README). Docker Hub pushes use DOCKERHUB_TOKEN, not
+# GITHUB_TOKEN; artifact download in `merge` is same-run, which
+# doesn't require additional scopes.
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build ${{ matrix.php_version }} ${{ matrix.variant }} (${{ matrix.arch.name }})
