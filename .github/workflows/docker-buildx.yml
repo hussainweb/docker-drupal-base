@@ -20,15 +20,18 @@ on:
 
 env:
   DOCKERFILE_DIR: php8
+  IMAGE_NAME: hussainweb/drupal-base
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  buildx:
-    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.php_version }} ${{ matrix.variant }} (${{ matrix.arch.name }})
+    runs-on: ${{ matrix.arch.runs_on }}
     strategy:
+      fail-fast: false
       matrix:
         php_version: ["8.2", "8.3", "8.4", "8.5"]
         variant:
@@ -38,6 +41,9 @@ jobs:
             "fpm-alpine",
             "frankenphp-trixie",
           ]
+        arch:
+          - { name: amd64, runs_on: ubuntu-24.04 }
+          - { name: arm64, runs_on: ubuntu-24.04-arm }
         # On pull_request and scheduled runs, skip PHP 8.2 and 8.3 to keep
         # CI fast. They are only built on direct pushes to main and on
         # workflow_dispatch. The 'none' fallback is a no-op exclude.
@@ -47,8 +53,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
       - name: Set up Docker buildx
         id: buildx
         uses: docker/setup-buildx-action@v4
@@ -65,28 +69,6 @@ jobs:
           username: hussainweb
           password: ${{ secrets.DOCKERHUB_TOKEN }}
         if: github.ref == 'refs/heads/main'
-      - name: Generate Docker tags
-        id: tags
-        run: |
-          # Base tag with full variant name
-          TAGS="hussainweb/drupal-base:php${{ matrix.php_version }}-${{ matrix.variant }}"
-
-          # For apache-trixie, add the short version tag (e.g., php8.4)
-          if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
-            TAGS="${TAGS},hussainweb/drupal-base:php${{ matrix.php_version }}"
-          fi
-
-          # For fpm-alpine, add the short -alpine tag (e.g., php8.4-alpine)
-          if [ "${{ matrix.variant }}" = "fpm-alpine" ]; then
-            TAGS="${TAGS},hussainweb/drupal-base:php${{ matrix.php_version }}-alpine"
-          fi
-
-          # For the latest PHP version on apache-trixie, add the latest tag
-          if [ "${{ matrix.php_version }}" = "8.5" ] && [ "${{ matrix.variant }}" = "apache-trixie" ]; then
-            TAGS="${TAGS},hussainweb/drupal-base:latest"
-          fi
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
       - name: Set up environment variables
         run: |
@@ -110,11 +92,13 @@ jobs:
           context: ${{ env.DOCKERFILE_DIR }}/${{ matrix.variant }}/
           load: true
           tags: drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}
+          platforms: linux/${{ matrix.arch.name }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
-          # cache-from only: the multi-arch publish step below owns
-          # cache-to so we don't write near-identical caches twice.
-          cache-from: type=gha
+          # cache-from only: the push-by-digest step below owns cache-to
+          # so we don't write near-identical caches twice per cell. The
+          # second build hits buildx's in-process cache populated here.
+          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.php_version }}-${{ matrix.arch.name }}
 
       - name: Create test directory structure
         run: |
@@ -157,7 +141,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results-${{ matrix.php_version }}-${{ matrix.variant }}
+          name: test-results-${{ matrix.php_version }}-${{ matrix.variant }}-${{ matrix.arch.name }}
           path: test-results/
           if-no-files-found: ignore
 
@@ -179,23 +163,129 @@ jobs:
           fail-build: true
           output-format: table
 
-      - name: Build and push Docker image for PHP ${{ matrix.php_version }}
+      - name: Build and push by digest
+        id: push
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v7
         with:
           context: ${{ env.DOCKERFILE_DIR }}/${{ matrix.variant }}/
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.tags.outputs.tags }}
+          platforms: linux/${{ matrix.arch.name }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
-          platforms: linux/amd64,linux/arm64
+          # push-by-digest: each runner publishes only its arch as an
+          # untagged manifest. The merge job stitches per-arch digests
+          # into the tagged multi-arch manifest list via imagetools.
+          # If this run fails after a successful push (e.g. arm64 OK but
+          # amd64 fails), the orphan digest-only manifest is small JSON
+          # whose blobs are shared with any future build of the same
+          # content; we rely on Docker Hub GC rather than scripting a
+          # cleanup step.
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           provenance: mode=max
           sbom: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.php_version }}-${{ matrix.arch.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-${{ matrix.php_version }}-${{ matrix.arch.name }}
+
+      - name: Export digest
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.push.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.php_version }}-${{ matrix.variant }}-${{ matrix.arch.name }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Merge ${{ matrix.php_version }} ${{ matrix.variant }} per-arch digests
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php_version: ["8.2", "8.3", "8.4", "8.5"]
+        variant:
+          [
+            "apache-trixie",
+            "apache-bookworm",
+            "fpm-alpine",
+            "frankenphp-trixie",
+          ]
+        exclude:
+          - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
+          - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
+    steps:
+      - name: Download per-arch digests
+        uses: actions/download-artifact@v6
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.php_version }}-${{ matrix.variant }}-*
+          merge-multiple: true
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: hussainweb
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate Docker tags
+        id: tags
+        run: |
+          # Base tag with full variant name
+          TAGS="${{ env.IMAGE_NAME }}:php${{ matrix.php_version }}-${{ matrix.variant }}"
+
+          # For apache-trixie, add the short version tag (e.g., php8.4)
+          if [ "${{ matrix.variant }}" = "apache-trixie" ]; then
+            TAGS="${TAGS},${{ env.IMAGE_NAME }}:php${{ matrix.php_version }}"
+          fi
+
+          # For fpm-alpine, add the short -alpine tag (e.g., php8.4-alpine)
+          if [ "${{ matrix.variant }}" = "fpm-alpine" ]; then
+            TAGS="${TAGS},${{ env.IMAGE_NAME }}:php${{ matrix.php_version }}-alpine"
+          fi
+
+          # For the latest PHP version on apache-trixie, add the latest tag
+          if [ "${{ matrix.php_version }}" = "8.5" ] && [ "${{ matrix.variant }}" = "apache-trixie" ]; then
+            TAGS="${TAGS},${{ env.IMAGE_NAME }}:latest"
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Create multi-arch manifest and push
+        working-directory: /tmp/digests
+        run: |
+          # Build the -t arg list from comma-separated TAGS.
+          IFS=',' read -ra TAGS_ARR <<< "${{ steps.tags.outputs.tags }}"
+          TAG_ARGS=()
+          for t in "${TAGS_ARR[@]}"; do
+            TAG_ARGS+=("-t" "$t")
+          done
+          # Reference each per-arch image by its digest. The artifact
+          # download wrote one empty file per digest into /tmp/digests,
+          # with the digest hash as the filename.
+          REFS=()
+          for d in *; do
+            REFS+=("${{ env.IMAGE_NAME }}@sha256:${d}")
+          done
+          docker buildx imagetools create "${TAG_ARGS[@]}" "${REFS[@]}"
+
+      - name: Inspect resulting multi-arch image
+        run: |
+          docker buildx imagetools inspect ${{ env.IMAGE_NAME }}:php${{ matrix.php_version }}-${{ matrix.variant }}
 
   dockerhub-readme:
     name: Sync Docker Hub description
-    needs: buildx
+    needs: merge
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
