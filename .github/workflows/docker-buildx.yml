@@ -64,9 +64,12 @@ jobs:
           # the 15th refresh proceed after a push on the 2nd (13 days).
           # Any failure to fetch the timestamp defaults to running the
           # build -- we prefer a wasted run over a silently missed one.
-          last=$(curl -sf --max-time 30 \
-            "https://hub.docker.com/v2/repositories/${IMAGE_NAME}/" \
-            | jq -r .last_updated)
+          # curl and jq run separately so a network failure or malformed
+          # response can't trip the runner's default `set -eo pipefail`
+          # and abort the step before this fallback runs.
+          resp=$(curl -sf --max-time 30 \
+            "https://hub.docker.com/v2/repositories/${IMAGE_NAME}/") || resp=""
+          last=$(jq -r '.last_updated // empty' <<<"$resp" 2>/dev/null) || last=""
           if [ -z "$last" ] || [ "$last" = "null" ]; then
             echo "Could not fetch last_updated from Docker Hub; running the build."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
