@@ -16,6 +16,7 @@ RUN set -eux; \
 	apt-get -y upgrade; \
 	apt-get install -y --no-install-recommends \
 		git \
+		patch \
 		unzip \
 		sendmail \
 		mariadb-client \
