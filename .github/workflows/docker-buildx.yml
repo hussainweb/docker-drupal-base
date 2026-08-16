@@ -221,6 +221,7 @@ jobs:
           only-fixed: true
           fail-build: true
           output-format: table
+          config: .grype.yaml
 
       - name: Build and push by digest
         id: push

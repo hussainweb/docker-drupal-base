@@ -1,0 +1,17 @@
+# Configuration for Grype vulnerability scanner (anchore/scan-action)
+# https://github.com/anchore/grype
+
+ignore:
+  # Upstream FrankenPHP binary dependencies (see Issue #40)
+  # Pre-compiled inside /usr/local/bin/frankenphp in dunglas/frankenphp:php*-trixie
+  - vulnerability: GHSA-r277-6w6q-xmqw
+    package:
+      name: github.com/getkin/kin-openapi
+      type: go-module
+    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
+
+  - vulnerability: GHSA-hrxh-6v49-42gf
+    package:
+      name: google.golang.org/grpc
+      type: go-module
+    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
