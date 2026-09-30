@@ -13,25 +13,28 @@ COPY --from=caddy:builder /usr/bin/xcaddy /usr/bin/xcaddy
 ARG CORAZA_CADDY_VERSION=v2.6.1
 
 # CGO must be enabled to build FrankenPHP. XCADDY_SETCAP keeps the
-# cap_net_bind_service capability the upstream binary has. The module set
-# matches the upstream binary (cbrotli for "encode br", Mercure, Vulcain)
-# plus Coraza. The build tags are the ones upstream uses.
+# cap_net_bind_service capability the upstream binary has. The build tags are
+# the ones upstream uses. The module set matches the upstream binary (cbrotli
+# for "encode br", Mercure, Vulcain) plus Coraza. Caddy and those modules are
+# pinned to the versions in FrankenPHP's own go.mod: xcaddy would otherwise
+# take the latest releases, which can need a newer Go than the builder has.
 RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
 	set -eux; \
+	ver() { awk -v m="$1" '$1 == m { print $2; exit }' /go/src/app/caddy/go.mod; }; \
 	CGO_ENABLED=1 \
 	XCADDY_SETCAP=1 \
 	XCADDY_GO_BUILD_FLAGS="-ldflags='-w -s' -tags=nobadger,nomysql,nopgx" \
 	CGO_CFLAGS="$(php-config --includes)" \
 	CGO_LDFLAGS="$(php-config --ldflags) $(php-config --libs)" \
-	xcaddy build \
+	xcaddy build "$(ver github.com/caddyserver/caddy/v2)" \
 		--output /usr/local/bin/frankenphp \
 		--with github.com/dunglas/frankenphp=./ \
 		--with github.com/dunglas/frankenphp/caddy=./caddy/ \
-		--with github.com/dunglas/caddy-cbrotli \
-		--with github.com/dunglas/mercure/caddy \
-		--with github.com/dunglas/vulcain/caddy \
-		--with github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION} \
+		--with "github.com/dunglas/caddy-cbrotli@$(ver github.com/dunglas/caddy-cbrotli)" \
+		--with "github.com/dunglas/mercure/caddy@$(ver github.com/dunglas/mercure/caddy)" \
+		--with "github.com/dunglas/vulcain/caddy@$(ver github.com/dunglas/vulcain/caddy)" \
+		--with "github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION}" \
 	; \
 	frankenphp version; \
 	frankenphp list-modules | grep -qx 'http.handlers.waf'; \
