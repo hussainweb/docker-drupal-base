@@ -319,7 +319,7 @@ ENV WAF_SNIPPET=/etc/frankenphp/waf/enabled.caddy
 | --- | --- | --- |
 | `WAF_SNIPPET` | `/etc/frankenphp/waf/disabled.caddy` | Caddy snippet imported for the WAF. Set to `/etc/frankenphp/waf/enabled.caddy` to enable it. |
 
-`enabled.caddy` sets the engine to `On`, turns response body inspection off (requests only, so large or streamed Drupal responses are not buffered), and includes, in this order: the recommended Coraza settings, the CRS setup and rules, and every `/etc/frankenphp/waf/rules/*.conf` in file name order. Rule matches are logged to the container log.
+`enabled.caddy` sets the engine to `On`, turns response body inspection off (requests only, so large or streamed Drupal responses are not buffered), and includes, in this order: the recommended Coraza settings, the CRS setup and rules, and every `/etc/frankenphp/waf/rules/*.conf` in file name order. Blocked requests are logged to the container log as `WAF rule violation detected` with the URI, and CRS rule matches are logged with their rule ids.
 
 **Default blocks** (`rules/10-scanner-paths.conf`, phase 1, they do not depend on CRS scoring and answer `403` before Drupal starts):
 
@@ -355,7 +355,7 @@ SecRequestBodyNoFilesLimit 1048576
 
 CRS exclusions are site specific. Use the log to find the rule ids that block legitimate requests instead of copying a list.
 
-**Rolling it out.** Start in detection mode, so that matching requests are logged but not blocked (this also applies to the default blocks), watch the log for false positives while real traffic and editors use the site, add exclusions, and then switch to blocking:
+**Rolling it out.** Start in detection mode, so that requests are not blocked (the default blocks are not enforced either) and CRS rule matches are only logged, watch the log for false positives while real traffic and editors use the site, add exclusions, and then switch to blocking:
 
 ```
 # waf/90-project.conf, first weeks

@@ -1,10 +1,11 @@
 #!/bin/bash
 # Checks the opt-in Coraza WAF of the FrankenPHP variant.
 #
-# Usage: verify-frankenphp-waf.sh default|enabled|capability <image>
+# Usage: verify-frankenphp-waf.sh default|enabled|detection|capability <image>
 #
 #   default     run against the site started without WAF_SNIPPET (behaviour unchanged)
 #   enabled     run against the site started with docker-compose.frankenphp-waf.yml
+#   detection   run against the site started with docker-compose.frankenphp-waf-detection.yml
 #   capability  check the file capability of the binary in the image
 set -u
 
@@ -38,14 +39,11 @@ wait_for_web() {
     exit 1
 }
 
-# The WAF logs every rule it matches; a 403 alone could also come from the
-# Caddyfile's own hardening (for example /.env), so look for the rule id.
-waf_logged() { # description, rule id
-    if docker compose logs "$SERVICE" 2>&1 | grep -E "id[\": ]+$2\b" | grep -q .; then
-        pass "$1 (WAF log has rule $2)"
-    else
-        fail "$1 (no WAF log entry for rule $2)"
-    fi
+# Blocked requests are logged as "WAF rule violation detected" with the uri.
+# A 403 alone could also come from the Caddyfile's own hardening (for example
+# /.env), so check the log to know that the WAF answered.
+waf_logged() { # description, path
+    if waf_blocked "$2"; then pass "$1 (WAF log has a violation for $2)"; else fail "$1 (no WAF violation logged for $2)"; fi
 }
 
 # True when the WAF logged a violation for this exact path.
@@ -88,9 +86,10 @@ enabled)
     check "PHP with a suffix after .php" 403 "$(status "$BASE_URL/wp-login.php;.png")"
     check "PHP in another case" 403 "$(status "$BASE_URL/Wp-Login.PHP")"
     check "PHP in the files directory" 403 "$(status "$BASE_URL/sites/default/files/x.php")"
-    waf_logged "/wp-login.php" 10001
-    waf_logged "/.env" 10002
-    waf_logged "/wp-admin/" 10003
+    waf_logged "/wp-login.php" /wp-login.php
+    waf_logged "/.env" /.env
+    waf_logged "/.git/config" /.git/config
+    waf_logged "/wp-admin/" /wp-admin/
     # CRS: SQL injection in the query string
     check "SQLi in the query string" 403 "$(status "$BASE_URL/?id=1%20UNION%20SELECT%20username,password%20FROM%20users--")"
     check "XSS in the query string" 403 "$(status "$BASE_URL/?q=%3Cscript%3Ealert(1)%3C/script%3E")"
@@ -121,6 +120,19 @@ enabled)
     check "/wp-content (project copy of the rule)" 403 "$(status "$BASE_URL/wp-content/x")"
     check_contains "Brotli is negotiated" "br" "$(brotli)"
     ;;
+detection)
+    # 90-project.conf sets SecRuleEngine DetectionOnly: nothing is blocked
+    wait_for_web
+    check "/wp-login.php is passed on to Drupal" 404 "$(status "$BASE_URL/wp-login.php")"
+    check "SQLi in the query string is not blocked" 200 "$(status -L "$BASE_URL/?id=1%20UNION%20SELECT%20username,password%20FROM%20users--")"
+    check "/" 200 "$(status -L "$BASE_URL/")"
+    if docker compose logs "$SERVICE" 2>&1 | grep -F 'Coraza:' | grep -q '942100'; then
+        pass "CRS match is still logged"
+    else
+        fail "CRS match is not logged"
+    fi
+    if waf_blocked "/wp-login.php"; then fail "no WAF violation expected in DetectionOnly"; else pass "no WAF violation in DetectionOnly"; fi
+    ;;
 capability)
     [ -n "$IMAGE" ] || { echo "image required"; exit 2; }
     caps=$(docker run --rm --entrypoint getcap "$IMAGE" /usr/local/bin/frankenphp 2>&1)
@@ -130,7 +142,7 @@ capability)
     check_contains "Brotli encoder is in the binary" "http.encoders.br" "$mods"
     ;;
 *)
-    echo "Usage: $0 default|enabled|capability <image>"
+    echo "Usage: $0 default|enabled|detection|capability <image>"
     exit 2
     ;;
 esac

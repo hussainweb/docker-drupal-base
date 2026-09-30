@@ -249,6 +249,13 @@ jobs:
             -f tests/docker-compose.frankenphp-waf.yml up -d --force-recreate
           ./tests/verify-frankenphp-waf.sh enabled
 
+      - name: Verify FrankenPHP WAF in DetectionOnly mode
+        if: matrix.variant == 'frankenphp-trixie'
+        run: |
+          docker compose -f tests/docker-compose.yml \
+            -f tests/docker-compose.frankenphp-waf-detection.yml up -d --force-recreate
+          ./tests/verify-frankenphp-waf.sh detection
+
       - name: Verify FrankenPHP binary (Coraza, Brotli, capability)
         if: matrix.variant == 'frankenphp-trixie'
         run: ./tests/verify-frankenphp-waf.sh capability "drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}"

@@ -1,0 +1,8 @@
+# Override for the FrankenPHP variant: WAF enabled in DetectionOnly mode (rollout).
+# Layered over tests/docker-compose.yml by the CI step that runs tests/verify-frankenphp-waf.sh detection.
+services:
+  drupal:
+    environment:
+      WAF_SNIPPET: /etc/frankenphp/waf/enabled.caddy
+    volumes:
+      - ./waf-rules-detection/90-project.conf:/etc/frankenphp/waf/rules/90-project.conf:ro
