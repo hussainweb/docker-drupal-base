@@ -22,7 +22,7 @@ This image supports the following PHP versions:
 - PHP 8.4
 - PHP 8.5 (latest)
 
-PHP 8.2–8.5 are available in the `apache-trixie`, `apache-bookworm`, and `fpm-alpine` variants. The `frankenphp-trixie` variant is published for PHP 8.4 and 8.5 only.
+PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`.
 
 ### Available Tags
 
@@ -32,7 +32,7 @@ PHP 8.2–8.5 are available in the `apache-trixie`, `apache-bookworm`, and `fpm-
 - `php8.5-alpine`, `php8.5-fpm-alpine`, `latest-alpine` - PHP 8.5 FPM on Alpine Linux
 - `php8.4`, `php8.3`, `php8.2` - Older PHP versions with Apache on Debian Trixie
 - `php8.4-alpine`, `php8.3-alpine`, `php8.2-alpine` - Older PHP versions FPM on Alpine Linux
-- `php8.5-frankenphp-trixie`, `php8.4-frankenphp-trixie` - FrankenPHP on Debian Trixie
+- `php8.5-frankenphp-trixie`, `php8.4-frankenphp-trixie`, `php8.3-frankenphp-trixie`, `php8.2-frankenphp-trixie` - FrankenPHP on Debian Trixie
 
 All images support both `linux/amd64` and `linux/arm64` architectures.
 
