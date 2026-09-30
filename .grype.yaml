@@ -15,3 +15,15 @@ ignore:
       name: google.golang.org/grpc
       type: go-module
     reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
+
+  - vulnerability: GHSA-2v4p-qf9q-27wj
+    package:
+      name: google.golang.org/grpc
+      type: go-module
+    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
+
+  - vulnerability: GHSA-vp52-pcj8-j9qc
+    package:
+      name: google.golang.org/grpc
+      type: go-module
+    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
