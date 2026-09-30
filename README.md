@@ -221,6 +221,8 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 		php_ini memory_limit {$PHP_MEMORY_LIMIT:128M}
 	}
 	order php_server before file_server
+	# Harmless unless the WAF snippet is enabled
+	order coraza_waf first
 }
 
 :80 {
@@ -231,6 +233,7 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 	# 401 from basic auth carries the X-Robots-Tag header too.
 	import {$NOINDEX_SNIPPET:/etc/frankenphp/noindex/disabled.caddy}
 	import {$BASIC_AUTH_SNIPPET:/etc/frankenphp/basic-auth/disabled.caddy}
+	import {$WAF_SNIPPET:/etc/frankenphp/waf/disabled.caddy}
 
 	# Block hidden PHP files
 	@hiddenPhp path_regexp \..*/.*.php$
@@ -301,6 +304,69 @@ Basic auth protects every path except `/robots.txt`, so crawlers can still read 
 **Downstream entrypoints.** The image sets `ENTRYPOINT ["docker-drupal-entrypoint"]` and re-declares the upstream `CMD`. If your image has its own entrypoint, end it with `exec docker-drupal-entrypoint "$@"` to keep these features (it hands over to `docker-php-entrypoint`). If you replace the entrypoint without doing so, the variables have no effect, and basic auth is never enabled.
 
 If you mount your own Caddyfile, it only gets these features if it contains the same `import` lines (and the `php_ini` line in the global block).
+
+#### Web application firewall (Coraza)
+
+The FrankenPHP binary in this image is built with the [Coraza](https://coraza.io/) WAF module for Caddy and ships the [OWASP Core Rule Set](https://coreruleset.org/) (CRS, embedded in the binary), plus a set of default blocks for scanner traffic. The WAF is **off by default**: the Caddyfile imports an empty snippet and nothing changes for you until you opt in. The binary is otherwise the upstream one (same modules, including Brotli, Mercure and Vulcain) and keeps its `cap_net_bind_service` capability.
+
+Turn it on with one environment variable, for example in your Dockerfile or compose file:
+
+```dockerfile
+ENV WAF_SNIPPET=/etc/frankenphp/waf/enabled.caddy
+```
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WAF_SNIPPET` | `/etc/frankenphp/waf/disabled.caddy` | Caddy snippet imported for the WAF. Set to `/etc/frankenphp/waf/enabled.caddy` to enable it. |
+
+`enabled.caddy` sets the engine to `On`, turns response body inspection off (requests only, so large or streamed Drupal responses are not buffered), and includes, in this order: the recommended Coraza settings, the CRS setup and rules, and every `/etc/frankenphp/waf/rules/*.conf` in file name order. Rule matches are logged to the container log.
+
+**Default blocks** (`rules/10-scanner-paths.conf`, phase 1, they do not depend on CRS scoring and answer `403` before Drupal starts):
+
+- Any path containing `.php` (in any case) except the Drupal front controllers `index.php`, `update.php`, `cron.php`, `authorize.php`, `install.php` and `rebuild.php`, at the web root or under `/core/`. `/index.php/foo` still works. Forms such as `/wp-login.php/index.php`, `/wp-login.php%2findex.php` and `/wp-login.php;.png` are blocked, because Caddy runs the script that ends at the first `.php`. This removes `wp-login.php`, `xmlrpc.php` and `eval-stdin.php` probes.
+- Hidden files and directories such as `/.env`, `/.git`, `/.svn`, `/.aws` and `/.ssh`. `/.well-known/` stays reachable.
+- Paths of other applications: `/wp-admin`, `/wp-content`, `/wp-includes`, `/wp-json`, `/phpmyadmin`, `/_ignition`, `/cgi-bin`, `/vendor` and a few more.
+
+The rule ids are 10001 to 10003. If a site legitimately needs one of these, remove the rule in your own file (see below) with `SecRuleRemoveById 10003`.
+
+**Project rules.** Add your own `*.conf` files to `/etc/frankenphp/waf/rules/`. They are included last, so they can override anything above. Use names that sort after `10-scanner-paths.conf`, for example `90-project.conf`:
+
+```dockerfile
+FROM hussainweb/drupal-base:php8.5-frankenphp-trixie
+ENV WAF_SNIPPET=/etc/frankenphp/waf/enabled.caddy
+COPY waf/90-project.conf /etc/frankenphp/waf/rules/90-project.conf
+```
+
+```
+# waf/90-project.conf
+# Drupal admin forms with HTML bodies (CKEditor) can trip CRS rules. Either
+# exclude the rule that fires for one field on those paths (the id is in the
+# log; 942100 is only an example) ...
+SecRule REQUEST_URI "@rx ^/node/(?:add/|\d+/edit)" \
+    "id:90001,phase:1,pass,nolog,ctl:ruleRemoveTargetById=942100;ARGS:body[0][value]"
+
+# ... or raise the anomaly score threshold (the CRS default is 5) for the site
+SecAction "id:90002,phase:1,pass,nolog,setvar:tx.inbound_anomaly_score_threshold=10"
+
+# Match the request body limits to the uploads you expect
+SecRequestBodyLimit 134217728
+SecRequestBodyNoFilesLimit 1048576
+```
+
+CRS exclusions are site specific. Use the log to find the rule ids that block legitimate requests instead of copying a list.
+
+**Rolling it out.** Start in detection mode, so that matching requests are logged but not blocked (this also applies to the default blocks), watch the log for false positives while real traffic and editors use the site, add exclusions, and then switch to blocking:
+
+```
+# waf/90-project.conf, first weeks
+SecRuleEngine DetectionOnly
+```
+
+Delete that line (the engine is `On` by default) when the log is clean.
+
+**Custom 403 page.** The WAF answers with a plain `403`. To show your own page, use `handle_errors` in a Caddyfile of your own (see below).
+
+As with the other snippets, a Caddyfile you mount yourself needs the `import` line and `order coraza_waf first` in the global block to get the WAF.
 
 #### Custom Caddyfile
 
