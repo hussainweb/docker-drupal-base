@@ -1,4 +1,46 @@
 ARG PHP_VERSION=8.4
+
+# Stage 1: build FrankenPHP with the Coraza WAF module. This follows the
+# upstream "custom build" recipe (https://frankenphp.dev/docs/docker/#how-to-install-more-caddy-modules)
+# and uses the builder image for the same PHP version and ZTS build as the
+# runtime image, so the PHP embedded in the binary matches it.
+FROM dunglas/frankenphp:builder-php${PHP_VERSION}-trixie AS frankenphp-builder
+
+# xcaddy is not part of the FrankenPHP builder image
+COPY --from=caddy:builder /usr/bin/xcaddy /usr/bin/xcaddy
+
+# Pinned so the build is reproducible; bump it deliberately.
+ARG CORAZA_CADDY_VERSION=v2.6.1
+
+# CGO must be enabled to build FrankenPHP. XCADDY_SETCAP keeps the
+# cap_net_bind_service capability the upstream binary has. The build tags are
+# the ones upstream uses. The module set matches the upstream binary (cbrotli
+# for "encode br", Mercure, Vulcain) plus Coraza. Caddy and those modules are
+# pinned to the versions in FrankenPHP's own go.mod: xcaddy would otherwise
+# take the latest releases, which can need a newer Go than the builder has.
+RUN --mount=type=cache,target=/root/go/pkg/mod \
+	--mount=type=cache,target=/root/.cache/go-build \
+	set -eux; \
+	ver() { awk -v m="$1" '$1 == m { print $2; exit }' /go/src/app/caddy/go.mod; }; \
+	CGO_ENABLED=1 \
+	XCADDY_SETCAP=1 \
+	XCADDY_GO_BUILD_FLAGS="-ldflags='-w -s' -tags=nobadger,nomysql,nopgx" \
+	CGO_CFLAGS="$(php-config --includes)" \
+	CGO_LDFLAGS="$(php-config --ldflags) $(php-config --libs)" \
+	xcaddy build "$(ver github.com/caddyserver/caddy/v2)" \
+		--output /usr/local/bin/frankenphp \
+		--with github.com/dunglas/frankenphp=./ \
+		--with github.com/dunglas/frankenphp/caddy=./caddy/ \
+		--with "github.com/dunglas/caddy-cbrotli@$(ver github.com/dunglas/caddy-cbrotli)" \
+		--with "github.com/dunglas/mercure/caddy@$(ver github.com/dunglas/mercure/caddy)" \
+		--with "github.com/dunglas/vulcain/caddy@$(ver github.com/dunglas/vulcain/caddy)" \
+		--with "github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION}" \
+	; \
+	frankenphp version; \
+	frankenphp list-modules | grep -qx 'http.handlers.waf'; \
+	frankenphp list-modules | grep -qx 'http.encoders.br'
+
+# Stage 2: the runtime image
 FROM dunglas/frankenphp:php${PHP_VERSION}-trixie
 
 ARG PHP_VERSION
@@ -7,6 +49,9 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
       org.opencontainers.image.title="Drupal base (frankenphp-trixie)" \
       org.opencontainers.image.description="Drupal-ready PHP ${PHP_VERSION} runtime on Debian Trixie with FrankenPHP (Caddy + PHP)" \
       org.opencontainers.image.version="${PHP_VERSION}"
+
+# Replace the upstream binary with the one that includes the Coraza module
+COPY --from=frankenphp-builder /usr/local/bin/frankenphp /usr/local/bin/frankenphp
 
 # install the PHP extensions we need
 RUN set -eux; \
@@ -128,6 +173,7 @@ COPY Caddyfile /etc/frankenphp/Caddyfile
 # Opt-in snippets imported by the Caddyfile; the disabled ones are the default
 COPY noindex/ /etc/frankenphp/noindex/
 COPY basic-auth/ /etc/frankenphp/basic-auth/
+COPY waf/ /etc/frankenphp/waf/
 
 # Prepares basic auth from environment variables, then runs the upstream
 # entrypoint. Setting ENTRYPOINT resets CMD, so re-declare the upstream one.

@@ -1,0 +1,2 @@
+# The WAF is disabled (default). Nothing to configure.
+# Set WAF_SNIPPET=/etc/frankenphp/waf/enabled.caddy to enable it.

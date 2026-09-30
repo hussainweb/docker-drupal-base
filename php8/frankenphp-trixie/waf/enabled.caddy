@@ -1,0 +1,22 @@
+# Opt-in: Coraza WAF with the OWASP Core Rule Set (embedded in the binary).
+# Enable with WAF_SNIPPET=/etc/frankenphp/waf/enabled.caddy
+#
+# Projects add their own *.conf files to /etc/frankenphp/waf/rules/ (for
+# example 90-project.conf) to tune the rules. They are included last and in
+# file name order, so they can override anything set here.
+coraza_waf {
+	load_owasp_crs
+	directives `
+		Include @coraza.conf-recommended
+		# The recommended file starts in DetectionOnly. Set the engine here,
+		# before the project rules, so that a project can still switch back
+		# to DetectionOnly in its own file while rolling out.
+		SecRuleEngine On
+		# Inspect requests only. Response bodies are not scanned, which avoids
+		# buffering large or streamed Drupal responses.
+		SecResponseBodyAccess Off
+		Include @crs-setup.conf.example
+		Include @owasp_crs/*.conf
+		Include /etc/frankenphp/waf/rules/*.conf
+	`
+}
