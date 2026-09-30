@@ -1,0 +1,9 @@
+# Opt-in: discourage search engines from indexing the site.
+# Enable with NOINDEX_SNIPPET=/etc/frankenphp/noindex/enabled.caddy
+header X-Robots-Tag "noindex, nofollow, noarchive"
+handle /robots.txt {
+	header Content-Type "text/plain; charset=utf-8"
+	respond "User-agent: *
+Disallow: /
+" 200
+}

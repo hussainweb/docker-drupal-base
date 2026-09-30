@@ -125,6 +125,15 @@ COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 # FrankenPHP configuration
 # Copy Caddyfile for Drupal configuration
 COPY Caddyfile /etc/frankenphp/Caddyfile
+# Opt-in snippets imported by the Caddyfile; the disabled ones are the default
+COPY noindex/ /etc/frankenphp/noindex/
+COPY basic-auth/ /etc/frankenphp/basic-auth/
+
+# Prepares basic auth from environment variables, then runs the upstream
+# entrypoint. Setting ENTRYPOINT resets CMD, so re-declare the upstream one.
+COPY --chmod=755 docker-drupal-entrypoint /usr/local/bin/docker-drupal-entrypoint
+ENTRYPOINT ["docker-drupal-entrypoint"]
+CMD ["--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
 
 WORKDIR /app
 ENV PATH=${PATH}:/app/vendor/bin

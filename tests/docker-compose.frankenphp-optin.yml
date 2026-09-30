@@ -1,0 +1,9 @@
+# Override for the FrankenPHP variant: turns on the opt-in features.
+# Layered over tests/docker-compose.yml by the CI step that runs tests/verify-frankenphp-optin.sh optin.
+services:
+  drupal:
+    environment:
+      BASIC_AUTH_USER: demo
+      BASIC_AUTH_PASSWORD: ${BASIC_AUTH_PASSWORD}
+      NOINDEX_SNIPPET: /etc/frankenphp/noindex/enabled.caddy
+      PHP_MEMORY_LIMIT: 512M

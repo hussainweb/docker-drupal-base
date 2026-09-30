@@ -213,6 +213,27 @@ jobs:
           chmod +x tests/verify-drupal.sh
           ./tests/verify-drupal.sh ${{ matrix.variant }}
 
+      - name: Verify FrankenPHP defaults (opt-in features off)
+        if: matrix.variant == 'frankenphp-trixie'
+        run: ./tests/verify-frankenphp-optin.sh default
+
+      - name: Verify FrankenPHP opt-in features
+        if: matrix.variant == 'frankenphp-trixie'
+        env:
+          # Special characters on purpose: $, quotes and braces must survive
+          # hashing and the Caddyfile.
+          BASIC_AUTH_PASSWORD: 'S3cret$pa"ss{env.HOME}'
+        run: |
+          # Recreate the container on the same installed site with the
+          # variables from the override file set.
+          docker compose -f tests/docker-compose.yml \
+            -f tests/docker-compose.frankenphp-optin.yml up -d --force-recreate
+          ./tests/verify-frankenphp-optin.sh optin
+
+      - name: Verify FrankenPHP basic auth fails closed
+        if: matrix.variant == 'frankenphp-trixie'
+        run: ./tests/verify-frankenphp-optin.sh failclosed "drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}"
+
       - name: Capture logs
         if: failure()
         run: |

@@ -1,0 +1,41 @@
+#!/bin/sh
+# Prepares the opt-in FrankenPHP features, then hands over to the upstream
+# entrypoint. Downstream entrypoints should end with:
+#   exec docker-drupal-entrypoint "$@"
+set -eu
+
+enabled=/etc/frankenphp/basic-auth/enabled.caddy
+
+# Credentials given: turn basic auth on unless a snippet was chosen.
+if [ -n "${BASIC_AUTH_USER:-}" ] \
+	&& { [ -n "${BASIC_AUTH_PASSWORD:-}" ] || [ -n "${BASIC_AUTH_HASH:-}" ]; } \
+	&& [ -z "${BASIC_AUTH_SNIPPET:-}" ]; then
+	BASIC_AUTH_SNIPPET=$enabled
+	export BASIC_AUTH_SNIPPET
+fi
+
+# Basic auth requested: fail closed rather than serve an open site.
+if [ "${BASIC_AUTH_SNIPPET:-}" = "$enabled" ]; then
+	if [ -z "${BASIC_AUTH_USER:-}" ]; then
+		echo "docker-drupal-entrypoint: basic auth is enabled but BASIC_AUTH_USER is not set." >&2
+		exit 1
+	fi
+	if [ -z "${BASIC_AUTH_HASH:-}" ]; then
+		if [ -z "${BASIC_AUTH_PASSWORD:-}" ]; then
+			echo "docker-drupal-entrypoint: basic auth is enabled but neither BASIC_AUTH_PASSWORD nor BASIC_AUTH_HASH is set." >&2
+			exit 1
+		fi
+		# The password goes in on stdin so it never shows up in a process list.
+		if ! BASIC_AUTH_HASH=$(printf '%s\n' "$BASIC_AUTH_PASSWORD" | frankenphp hash-password) \
+			|| [ -z "$BASIC_AUTH_HASH" ]; then
+			echo "docker-drupal-entrypoint: failed to hash BASIC_AUTH_PASSWORD." >&2
+			exit 1
+		fi
+		export BASIC_AUTH_HASH
+	fi
+fi
+
+# The plaintext is no longer needed; keep it out of PHP's environment.
+unset BASIC_AUTH_PASSWORD
+
+exec docker-php-entrypoint "$@"
