@@ -129,5 +129,5 @@ COPY Caddyfile /etc/frankenphp/Caddyfile
 WORKDIR /app
 ENV PATH=${PATH}:/app/vendor/bin
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --start-interval=5s --retries=3 \
 	CMD ["php", "-r", "exit(@fsockopen('127.0.0.1', 80, $e, $s, 2) ? 0 : 1);"]

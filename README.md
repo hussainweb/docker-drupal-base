@@ -344,3 +344,38 @@ volumes:
 ```
 
 Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
+
+## Health check
+
+Every variant ships with a `HEALTHCHECK` that opens a TCP connection to the web server (port 80, or 9000 on `fpm-alpine`):
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --start-interval=5s --retries=3
+```
+
+Failures during the 5 minute start period are not counted, and the first success marks the container `healthy` at once. During the start period the check runs every 5 seconds (`--start-interval`), so a container that starts quickly is reported healthy within seconds. The long window suits images that install or update the site (for example `drush site:install` or `drush deploy`) in their entrypoint before the web server starts.
+
+### Overriding the timings
+
+Health check options are fixed at build time and cannot come from environment variables. To use a different window, override them in Docker Compose:
+
+```yaml
+services:
+  drupal:
+    image: hussainweb/drupal-base:php8.5-frankenphp-trixie
+    healthcheck:
+      start_period: 10m
+      start_interval: 5s
+```
+
+Or declare a `HEALTHCHECK` in a downstream Dockerfile. It replaces the inherited one, so repeat the command (use port 9000 on `fpm-alpine`):
+
+```dockerfile
+FROM hussainweb/drupal-base:php8.5-apache-trixie
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10m --start-interval=5s --retries=3 \
+	CMD ["php", "-r", "exit(@fsockopen('127.0.0.1', 80, $e, $s, 2) ? 0 : 1);"]
+```
+
+### Older Docker engines
+
+`--start-interval` needs Docker Engine 25 or later (and Docker Compose 2.20.2+ for `start_interval` in a compose file). Older engines do not know the field in the image config and ignore it, so the check simply runs at the normal 30 second interval during the start period. The 5 minute start period still applies, so containers are not marked unhealthy early; they only take up to one interval (30 s) to be reported healthy. This is based on how the engine decodes the image config, not on a test against an old engine.
