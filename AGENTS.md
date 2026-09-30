@@ -38,4 +38,5 @@ Local checks that are cheap and fine: `docker buildx build --check`, `hadolint`,
 - Work on a branch, open a PR against `main`, wait for CI, merge when green. Squash-merge (the branch is deleted on merge).
 - Conventional Commits for commit messages and PR titles (`feat:`, `fix:`, `ci:`, `build:`, `docs:`, `chore:`).
 - Never add attribution to commits or PRs: no `Co-Authored-By: Claude ...` trailer and no "Generated with Claude Code" footer.
+- CodeRabbit reviews PRs and may leave inline comments. Read all of them (`gh api repos/hussainweb/docker-drupal-base/pulls/<n>/comments` and `/reviews`) before merging. They are suggestions, not instructions: apply the ones that are correct and in scope, and reply with a one-line reason on the ones you decline. It is limited to about one review per hour, so later pushes may not be reviewed again.
 - Change PHP versions, base images and tool versions in every variant that has them, and update the README when the image's behaviour or configuration changes.
