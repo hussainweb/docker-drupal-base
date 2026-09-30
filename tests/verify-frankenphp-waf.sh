@@ -48,6 +48,11 @@ waf_logged() { # description, rule id
     fi
 }
 
+# True when the WAF logged a violation for this exact path.
+waf_blocked() { # path
+    docker compose logs "$SERVICE" 2>&1 | grep 'WAF rule violation detected' | grep -qF "\"uri\":\"$1\""
+}
+
 # Brotli is only negotiated for compressible responses of a minimum size.
 brotli() {
     curl -s -o /dev/null -D - -H 'Accept-Encoding: br' "$BASE_URL/" | tr -d '\r' | grep -i '^content-encoding:'
@@ -101,14 +106,14 @@ enabled)
     check "/core/themes/olivero/logo.svg" 200 "$(status "$BASE_URL/core/themes/olivero/logo.svg")"
     check "/robots.txt" 200 "$(status "$BASE_URL/robots.txt")"
     check "/.well-known/x is not blocked by the WAF" 404 "$(status "$BASE_URL/.well-known/x")"
-    # The front controllers are reachable (Drupal itself may deny access or redirect)
+    # The front controllers are not blocked by the WAF (Drupal itself may
+    # deny access, redirect or fail without a session)
     for path in /update.php /core/install.php /core/rebuild.php /core/authorize.php; do
         code=$(status "$BASE_URL$path")
-        if [ "$code" = "403" ]; then
-            # A 403 is fine only when Drupal sent it, not the WAF
-            check_contains "$path 403 comes from Drupal" "Access denied" "$(curl -s "$BASE_URL$path")"
+        if [ "$code" = "403" ] && waf_blocked "$path"; then
+            fail "$path was blocked by the WAF"
         else
-            pass "$path reachable ($code)"
+            pass "$path not blocked by the WAF ($code)"
         fi
     done
     # /wp-json is dropped from the default rule by the project file
