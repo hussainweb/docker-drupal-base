@@ -136,5 +136,5 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/
 ENV PATH=${PATH}:/var/www/html/vendor/bin
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --start-interval=5s --retries=3 \
 	CMD ["php", "-r", "exit(@fsockopen('127.0.0.1', 80, $e, $s, 2) ? 0 : 1);"]
