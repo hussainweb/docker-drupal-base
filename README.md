@@ -350,7 +350,7 @@ SecAction "id:90002,phase:1,pass,nolog,setvar:tx.inbound_anomaly_score_threshold
 
 # Match the request body limits to the uploads you expect
 SecRequestBodyLimit 134217728
-SecRequestBodyNoFilesLimit 1048576
+# Coraza does not enforce SecRequestBodyNoFilesLimit, so only the total limit applies
 ```
 
 CRS exclusions are site specific. Use the log to find the rule ids that block legitimate requests instead of copying a list.
