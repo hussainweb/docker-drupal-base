@@ -174,13 +174,13 @@ jobs:
 
       - name: Assert health check config in image
         run: |
-          # Durations are reported in nanoseconds: 5m = 300s, 5s.
+          # The Go template renders durations as strings (5m0s, 5s).
           image="drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}"
           period=$(docker image inspect -f '{{.Config.Healthcheck.StartPeriod}}' "$image")
           interval=$(docker image inspect -f '{{.Config.Healthcheck.StartInterval}}' "$image")
           echo "StartPeriod=${period} StartInterval=${interval}"
-          [ "$period" = "300000000000" ] || { echo "Unexpected StartPeriod"; exit 1; }
-          [ "$interval" = "5000000000" ] || { echo "Unexpected StartInterval"; exit 1; }
+          [ "$period" = "5m0s" ] || { echo "Unexpected StartPeriod"; exit 1; }
+          [ "$interval" = "5s" ] || { echo "Unexpected StartInterval"; exit 1; }
 
       - name: Wait for container to become healthy
         run: |
