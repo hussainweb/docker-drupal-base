@@ -1,0 +1,2 @@
+# Basic auth is disabled (default). Nothing to configure.
+# Set BASIC_AUTH_USER and BASIC_AUTH_PASSWORD to enable it.

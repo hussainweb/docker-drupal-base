@@ -1,11 +1,18 @@
 {
-	frankenphp
+	frankenphp {
+		php_ini memory_limit {$PHP_MEMORY_LIMIT:128M}
+	}
 	order php_server before file_server
 }
 
 :80 {
 	encode zstd br gzip
 	root * /app/web
+
+	# Opt-in features, off by default (see README). Noindex comes first so the
+	# 401 from basic auth carries the X-Robots-Tag header too.
+	import {$NOINDEX_SNIPPET:/etc/frankenphp/noindex/disabled.caddy}
+	import {$BASIC_AUTH_SNIPPET:/etc/frankenphp/basic-auth/disabled.caddy}
 
 	# Block hidden PHP files
 	@hiddenPhp path_regexp \..*/.*.php$

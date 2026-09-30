@@ -1,0 +1,2 @@
+# Noindex is disabled (default). Nothing to configure.
+# Set NOINDEX_SNIPPET=/etc/frankenphp/noindex/enabled.caddy to enable it.

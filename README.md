@@ -217,13 +217,20 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 
 ```caddyfile
 {
-	frankenphp
+	frankenphp {
+		php_ini memory_limit {$PHP_MEMORY_LIMIT:128M}
+	}
 	order php_server before file_server
 }
 
 :80 {
 	encode zstd br gzip
 	root * /app/web
+
+	# Opt-in features, off by default (see README). Noindex comes first so the
+	# 401 from basic auth carries the X-Robots-Tag header too.
+	import {$NOINDEX_SNIPPET:/etc/frankenphp/noindex/disabled.caddy}
+	import {$BASIC_AUTH_SNIPPET:/etc/frankenphp/basic-auth/disabled.caddy}
 
 	# Block hidden PHP files
 	@hiddenPhp path_regexp \..*/.*.php$
@@ -258,6 +265,42 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 	php_server
 }
 ```
+
+#### Basic auth, noindex and PHP memory limit
+
+Three features are driven by environment variables, so a private staging or demo site can run on the stock Caddyfile. All are off (or unchanged) by default.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BASIC_AUTH_USER` | unset | User name for HTTP basic auth. |
+| `BASIC_AUTH_PASSWORD` | unset | Plaintext password. The entrypoint hashes it at start. |
+| `BASIC_AUTH_HASH` | unset | A ready-made hash (from `frankenphp hash-password`) instead of a password. Wins over `BASIC_AUTH_PASSWORD` if both are set. |
+| `BASIC_AUTH_SNIPPET` | `/etc/frankenphp/basic-auth/disabled.caddy` | Caddy snippet imported for basic auth. Set automatically to `/etc/frankenphp/basic-auth/enabled.caddy` when the user and a password or hash are given. |
+| `NOINDEX_SNIPPET` | `/etc/frankenphp/noindex/disabled.caddy` | Set to `/etc/frankenphp/noindex/enabled.caddy` to send `X-Robots-Tag: noindex, nofollow, noarchive` on every response (the 401 included) and to serve a disallow-all `/robots.txt`. |
+| `PHP_MEMORY_LIMIT` | `128M` | `memory_limit` for the web server. `128M` is PHP's built-in default, so nothing changes unless you set it. The CLI keeps `memory_limit = -1`, so drush and composer are unaffected. |
+
+```yaml
+services:
+  drupal:
+    image: hussainweb/drupal-base:php8.5-frankenphp-trixie
+    volumes:
+      - ./path/to/your/drupal/root:/app
+    ports:
+      - "8080:80"
+    environment:
+      BASIC_AUTH_USER: demo
+      BASIC_AUTH_PASSWORD: ${BASIC_AUTH_PASSWORD}
+      NOINDEX_SNIPPET: /etc/frankenphp/noindex/enabled.caddy
+      PHP_MEMORY_LIMIT: 512M
+```
+
+Basic auth protects every path except `/robots.txt`, so crawlers can still read the disallow rule. The password is hashed by `docker-drupal-entrypoint` (a bcrypt hash via `frankenphp hash-password`, with the password on stdin), so you never write a hash containing `$` into a compose file. `BASIC_AUTH_PASSWORD` is unset before the server starts, so it does not reach PHP's environment. The user name must not contain spaces.
+
+**Fails closed.** If basic auth is requested (`BASIC_AUTH_SNIPPET` points at the enabled file) but the user name or the password and hash are missing, the container exits with an error instead of starting an open site.
+
+**Downstream entrypoints.** The image sets `ENTRYPOINT ["docker-drupal-entrypoint"]` and re-declares the upstream `CMD`. If your image has its own entrypoint, end it with `exec docker-drupal-entrypoint "$@"` to keep these features (it hands over to `docker-php-entrypoint`). If you replace the entrypoint without doing so, the variables have no effect, and basic auth is never enabled.
+
+If you mount your own Caddyfile, it only gets these features if it contains the same `import` lines (and the `php_ini` line in the global block).
 
 #### Custom Caddyfile
 

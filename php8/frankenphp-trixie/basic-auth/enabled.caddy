@@ -1,0 +1,7 @@
+# Opt-in: HTTP basic auth on every path except /robots.txt.
+# docker-drupal-entrypoint enables this when BASIC_AUTH_USER and
+# BASIC_AUTH_PASSWORD (or BASIC_AUTH_HASH) are set.
+@drupal_base_basic_auth not path /robots.txt
+basic_auth @drupal_base_basic_auth {
+	{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+}
