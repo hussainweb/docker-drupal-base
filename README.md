@@ -353,7 +353,7 @@ Every variant ships with a `HEALTHCHECK` that opens a TCP connection to the web 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --start-interval=5s --retries=3
 ```
 
-Failures during the 5 minute start period are not counted, and the first success marks the container `healthy` at once. During the start period the check runs every 5 seconds (`--start-interval`), so a container that starts quickly is reported healthy within seconds. The long window suits images that install or update the site (for example `drush site:install` or `drush deploy`) in their entrypoint before the web server starts.
+Failures during the 5 minute start period are not counted until the first successful check. That first success marks the container `healthy` at once and ends the suppression: from then on, consecutive failures count toward `--retries`, even if the 5 minutes have not elapsed. During the start period the check runs every 5 seconds (`--start-interval`), so a container that starts quickly is reported healthy within seconds. The long window suits images that install or update the site (for example `drush site:install` or `drush deploy`) in their entrypoint before the web server starts.
 
 ### Overriding the timings
 
