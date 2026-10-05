@@ -1,0 +1,2 @@
+# Rate limiting is disabled (default). Nothing to configure.
+# Set RATE_LIMIT_SNIPPET=/etc/frankenphp/rate-limit/enabled.caddy to enable it.

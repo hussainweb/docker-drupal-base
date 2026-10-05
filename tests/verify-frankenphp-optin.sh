@@ -1,11 +1,13 @@
 #!/bin/bash
-# Checks the opt-in FrankenPHP features (basic auth, noindex, PHP memory limit).
+# Checks the opt-in FrankenPHP features (basic auth, noindex, PHP memory limit,
+# rate limiting).
 #
-# Usage: verify-frankenphp-optin.sh default|optin|failclosed <image>
+# Usage: verify-frankenphp-optin.sh default|optin|ratelimit|failclosed <image>
 #
 #   default     run against the site started with none of the variables set
 #   optin       run against the site started with docker-compose.frankenphp-optin.yml
 #               (needs BASIC_AUTH_PASSWORD in the environment)
+#   ratelimit   run against the site started with docker-compose.frankenphp-ratelimit.yml
 #   failclosed  run the image directly with incomplete basic auth settings
 set -u
 
@@ -41,6 +43,12 @@ wait_for_web() {
     exit 1
 }
 
+status() { # path, extra curl args
+    local path=$1
+    shift
+    curl -s -o /dev/null -w '%{http_code}' "$@" "$BASE_URL$path"
+}
+
 # memory_limit as the web server sees it (a request), not the CLI.
 web_memory_limit() { # extra curl args
     docker compose exec -T "$SERVICE" sh -c \
@@ -58,6 +66,11 @@ default)
     check_contains "/robots.txt is Drupal's own" "Disallow: /core/" "$robots"
     check "web memory_limit is PHP's default" 128M "$(web_memory_limit)"
     check "CLI memory_limit" -1 "$(docker compose exec -T "$SERVICE" php -r 'echo ini_get("memory_limit");')"
+    limited=0
+    for _ in $(seq 1 20); do
+        [ "$(status /user/login)" = 429 ] && limited=1
+    done
+    check "20 requests are not rate limited" 0 "$limited"
     ;;
 optin)
     : "${BASIC_AUTH_PASSWORD:?BASIC_AUTH_PASSWORD must be set}"
@@ -84,6 +97,21 @@ optin)
         pass "BASIC_AUTH_PASSWORD is unset in the server process"
     fi
     ;;
+ratelimit)
+    wait_for_web
+    # The Docker network is trusted, so X-Forwarded-For picks the client. Each
+    # check uses its own address, apart from the one wait_for_web used.
+    a=(-H "X-Forwarded-For: 198.51.100.1")
+    b=(-H "X-Forwarded-For: 198.51.100.2")
+    for i in $(seq 1 5); do
+        check "request $i of 5 is allowed" 200 "$(status /user/login "${a[@]}")"
+    done
+    check "request 6 is rate limited" 429 "$(status /user/login "${a[@]}")"
+    check_contains "429 carries Retry-After" "Retry-After:" "$(curl -si "${a[@]}" "$BASE_URL/user/login")"
+    check "static assets are not counted" 200 "$(status /core/misc/drupal.js "${a[@]}")"
+    check "another client is allowed" 200 "$(status /user/login "${b[@]}")"
+    check_contains "the log has the client" '"key":"198.51.100.1"' "$(docker compose logs "$SERVICE" 2>&1)"
+    ;;
 failclosed)
     [ -n "$IMAGE" ] || { echo "image required"; exit 2; }
     enabled=/etc/frankenphp/basic-auth/enabled.caddy
@@ -95,7 +123,7 @@ failclosed)
     done
     ;;
 *)
-    echo "Usage: $0 default|optin|failclosed <image>"
+    echo "Usage: $0 default|optin|ratelimit|failclosed <image>"
     exit 2
     ;;
 esac

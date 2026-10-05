@@ -1,0 +1,19 @@
+# Opt-in: per-client rate limiting (caddy-ratelimit).
+# Enable with RATE_LIMIT_SNIPPET=/etc/frankenphp/rate-limit/enabled.caddy
+#
+# Clients are told apart by {client_ip}, which is the connecting address
+# unless TRUSTED_PROXIES is set. IPv6 clients share a limit per /64, since
+# one host usually has a whole /64. Static assets are not counted, so a page
+# with many images or scripts uses one request of the budget.
+rate_limit {
+	zone drupal_base {
+		match {
+			not path *.avif *.css *.eot *.gif *.gz *.ico *.jpg *.jpeg *.js *.otf *.pdf *.png *.svg *.ttf *.webp *.woff *.woff2
+		}
+		key {client_ip}
+		events {$RATE_LIMIT_EVENTS:120}
+		window {$RATE_LIMIT_WINDOW:1m}
+		ipv6_prefix 64
+	}
+	log_key
+}

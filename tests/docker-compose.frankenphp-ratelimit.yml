@@ -1,0 +1,11 @@
+# Override for the FrankenPHP variant: turns on the opt-in rate limit with a
+# small budget, and trusts the Docker network so the test can set the client
+# with X-Forwarded-For.
+# Layered over tests/docker-compose.yml by the CI step that runs tests/verify-frankenphp-optin.sh ratelimit.
+services:
+  drupal:
+    environment:
+      RATE_LIMIT_SNIPPET: /etc/frankenphp/rate-limit/enabled.caddy
+      RATE_LIMIT_EVENTS: 5
+      RATE_LIMIT_WINDOW: 1m
+      TRUSTED_PROXIES: private_ranges

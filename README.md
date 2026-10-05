@@ -223,6 +223,14 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 	order php_server before file_server
 	# Harmless unless the WAF snippet is enabled
 	order coraza_waf first
+	# Rate limiting runs before the WAF and basic auth, so floods and password
+	# guessing are cut off cheaply. Harmless unless its snippet is enabled.
+	order rate_limit before coraza_waf
+	servers {
+		# Proxies whose client IP headers are believed. None by default.
+		trusted_proxies static {$TRUSTED_PROXIES:}
+		client_ip_headers {$CLIENT_IP_HEADERS:X-Forwarded-For}
+	}
 }
 
 :80 {
@@ -234,6 +242,7 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 	import {$NOINDEX_SNIPPET:/etc/frankenphp/noindex/disabled.caddy}
 	import {$BASIC_AUTH_SNIPPET:/etc/frankenphp/basic-auth/disabled.caddy}
 	import {$WAF_SNIPPET:/etc/frankenphp/waf/disabled.caddy}
+	import {$RATE_LIMIT_SNIPPET:/etc/frankenphp/rate-limit/disabled.caddy}
 
 	# Block hidden PHP files
 	@hiddenPhp path_regexp \..*/.*.php$
@@ -307,7 +316,7 @@ If you mount your own Caddyfile, it only gets these features if it contains the 
 
 #### Web application firewall (Coraza)
 
-The FrankenPHP binary in this image is built with the [Coraza](https://coraza.io/) WAF module for Caddy and ships the [OWASP Core Rule Set](https://coreruleset.org/) (CRS, embedded in the binary), plus a set of default blocks for scanner traffic. The WAF is **off by default**: the Caddyfile imports an empty snippet and nothing changes for you until you opt in. The binary is otherwise the upstream one (same modules, including Brotli, Mercure and Vulcain) and keeps its `cap_net_bind_service` capability.
+The FrankenPHP binary in this image is built with the [Coraza](https://coraza.io/) WAF module for Caddy and ships the [OWASP Core Rule Set](https://coreruleset.org/) (CRS, embedded in the binary), plus a set of default blocks for scanner traffic. The WAF is **off by default**: the Caddyfile imports an empty snippet and nothing changes for you until you opt in. The binary also has the rate limit module (see below) and is otherwise the upstream one (same modules, including Brotli, Mercure and Vulcain). It keeps its `cap_net_bind_service` capability.
 
 Turn it on with one environment variable, for example in your Dockerfile or compose file:
 
@@ -367,6 +376,36 @@ Delete that line (the engine is `On` by default) when the log is clean.
 **Custom 403 page.** The WAF answers with a plain `403`. To show your own page, use `handle_errors` in a Caddyfile of your own (see below).
 
 As with the other snippets, a Caddyfile you mount yourself needs the `import` line and `order coraza_waf first` in the global block to get the WAF.
+
+#### Rate limiting
+
+The binary includes [caddy-ratelimit](https://github.com/mholt/caddy-ratelimit), and the Caddyfile can limit how many requests each client makes. It is **off by default**. Turn it on with one environment variable:
+
+```yaml
+services:
+  drupal:
+    image: hussainweb/drupal-base:php8.5-frankenphp-trixie
+    environment:
+      RATE_LIMIT_SNIPPET: /etc/frankenphp/rate-limit/enabled.caddy
+      # Behind a load balancer or CDN, trust it so each visitor gets their own limit
+      TRUSTED_PROXIES: private_ranges
+```
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `RATE_LIMIT_SNIPPET` | `/etc/frankenphp/rate-limit/disabled.caddy` | Caddy snippet imported for rate limiting. Set to `/etc/frankenphp/rate-limit/enabled.caddy` to enable it. |
+| `RATE_LIMIT_EVENTS` | `120` | Requests a client may make in the window. |
+| `RATE_LIMIT_WINDOW` | `1m` | The sliding window, as a Caddy duration (`30s`, `1m`, `1h`). |
+| `TRUSTED_PROXIES` | unset (none) | Space-separated IP ranges of proxies in front of the site, or `private_ranges`. Their client IP headers are believed. |
+| `CLIENT_IP_HEADERS` | `X-Forwarded-For` | Space-separated headers that carry the client IP, read only from trusted proxies. For example `CF-Connecting-IP X-Forwarded-For` for Cloudflare. |
+
+A client that goes over the limit gets a `429` with a `Retry-After` header, and the container log has a `rate limit exceeded` line with the client's address. Clients are told apart by IP address. IPv6 addresses share a limit per `/64`, because one host usually has a whole `/64`. Static assets (CSS, JS, images and fonts) are not counted, so a page load uses one request of the budget, plus any AJAX calls it makes. Rate limiting runs before the WAF and basic auth, so it also slows down password guessing.
+
+**Behind a proxy, set `TRUSTED_PROXIES`.** Without it every request seems to come from the load balancer, so all visitors share one limit and a busy site starts answering `429`. Only list proxies you control. A trusted range can claim any client IP, so trusting too much lets anyone pick their own limit. `TRUSTED_PROXIES` sets Caddy's [`trusted_proxies`](https://caddyserver.com/docs/caddyfile/options#trusted-proxies), so it also changes the client IP in Caddy's logs. PHP's `REMOTE_ADDR` is not affected. Configure Drupal's `reverse_proxy` settings for that.
+
+**Choosing a limit.** The default of 120 requests a minute (excluding static assets) is a starting point. Many editors behind one office NAT share an address, and some admin pages make many AJAX requests. Raise the limit if you see legitimate `429`s in the log. The counts are kept in memory, per container. With several replicas, each one counts separately, and a restart resets them.
+
+As with the other snippets, a Caddyfile you mount yourself needs the `import` line, and `order rate_limit before coraza_waf` (or another `order` for `rate_limit`) in the global block, to get rate limiting.
 
 #### Custom Caddyfile
 
