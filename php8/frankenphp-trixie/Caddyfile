@@ -5,6 +5,17 @@
 	order php_server before file_server
 	# Harmless unless the WAF snippet is enabled
 	order coraza_waf first
+	# Rate limiting runs before the WAF and basic auth, so floods and password
+	# guessing are cut off cheaply. Harmless unless its snippet is enabled.
+	order rate_limit before coraza_waf
+	servers {
+		# Proxies whose client IP headers are believed. None by default.
+		trusted_proxies static {$TRUSTED_PROXIES:}
+		# Read X-Forwarded-For from the right, skipping trusted proxies, so a
+		# client cannot pick its own address by sending the header itself.
+		trusted_proxies_strict
+		client_ip_headers {$CLIENT_IP_HEADERS:X-Forwarded-For}
+	}
 }
 
 :80 {
@@ -16,6 +27,7 @@
 	import {$NOINDEX_SNIPPET:/etc/frankenphp/noindex/disabled.caddy}
 	import {$BASIC_AUTH_SNIPPET:/etc/frankenphp/basic-auth/disabled.caddy}
 	import {$WAF_SNIPPET:/etc/frankenphp/waf/disabled.caddy}
+	import {$RATE_LIMIT_SNIPPET:/etc/frankenphp/rate-limit/disabled.caddy}
 
 	# Block hidden PHP files
 	@hiddenPhp path_regexp \..*/.*.php$

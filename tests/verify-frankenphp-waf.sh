@@ -140,6 +140,7 @@ capability)
     mods=$(docker run --rm --entrypoint frankenphp "$IMAGE" list-modules 2>&1)
     check_contains "WAF module is in the binary" "http.handlers.waf" "$mods"
     check_contains "Brotli encoder is in the binary" "http.encoders.br" "$mods"
+    check_contains "rate limit module is in the binary" "http.handlers.rate_limit" "$mods"
     ;;
 *)
     echo "Usage: $0 default|enabled|detection|capability <image>"

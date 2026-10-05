@@ -11,13 +11,17 @@ COPY --from=caddy:builder /usr/bin/xcaddy /usr/bin/xcaddy
 
 # Pinned so the build is reproducible; bump it deliberately.
 ARG CORAZA_CADDY_VERSION=v2.6.1
+# A commit on master: the only release, v0.1.0, predates ipv6_prefix and the
+# metrics fixes.
+ARG CADDY_RATELIMIT_VERSION=v0.1.1-0.20260612195517-5625512f24f6
 
 # CGO must be enabled to build FrankenPHP. XCADDY_SETCAP keeps the
 # cap_net_bind_service capability the upstream binary has. The build tags are
 # the ones upstream uses. The module set matches the upstream binary (cbrotli
-# for "encode br", Mercure, Vulcain) plus Coraza. Caddy and those modules are
-# pinned to the versions in FrankenPHP's own go.mod: xcaddy would otherwise
-# take the latest releases, which can need a newer Go than the builder has.
+# for "encode br", Mercure, Vulcain) plus Coraza and caddy-ratelimit. Caddy and
+# the upstream modules are pinned to the versions in FrankenPHP's own go.mod:
+# xcaddy would otherwise take the latest releases, which can need a newer Go
+# than the builder has.
 RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
 	set -eux; \
@@ -35,10 +39,13 @@ RUN --mount=type=cache,target=/root/go/pkg/mod \
 		--with "github.com/dunglas/mercure/caddy@$(ver github.com/dunglas/mercure/caddy)" \
 		--with "github.com/dunglas/vulcain/caddy@$(ver github.com/dunglas/vulcain/caddy)" \
 		--with "github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION}" \
+		--with "github.com/mholt/caddy-ratelimit@${CADDY_RATELIMIT_VERSION}" \
 	; \
 	frankenphp version; \
+	frankenphp list-modules --versions --skip-standard; \
 	frankenphp list-modules | grep -qx 'http.handlers.waf'; \
-	frankenphp list-modules | grep -qx 'http.encoders.br'
+	frankenphp list-modules | grep -qx 'http.encoders.br'; \
+	frankenphp list-modules | grep -qx 'http.handlers.rate_limit'
 
 # Stage 2: the runtime image
 FROM dunglas/frankenphp:php${PHP_VERSION}-trixie
@@ -50,7 +57,7 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
       org.opencontainers.image.description="Drupal-ready PHP ${PHP_VERSION} runtime on Debian Trixie with FrankenPHP (Caddy + PHP)" \
       org.opencontainers.image.version="${PHP_VERSION}"
 
-# Replace the upstream binary with the one that includes the Coraza module
+# Replace the upstream binary with the one that includes Coraza and rate limiting
 COPY --from=frankenphp-builder /usr/local/bin/frankenphp /usr/local/bin/frankenphp
 
 # install the PHP extensions we need
@@ -174,6 +181,7 @@ COPY Caddyfile /etc/frankenphp/Caddyfile
 COPY noindex/ /etc/frankenphp/noindex/
 COPY basic-auth/ /etc/frankenphp/basic-auth/
 COPY waf/ /etc/frankenphp/waf/
+COPY rate-limit/ /etc/frankenphp/rate-limit/
 
 # Prepares basic auth from environment variables, then runs the upstream
 # entrypoint. Setting ENTRYPOINT resets CMD, so re-declare the upstream one.
