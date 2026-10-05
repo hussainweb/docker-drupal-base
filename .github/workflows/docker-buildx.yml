@@ -144,6 +144,9 @@ jobs:
             echo "COMPOSE_FILE=tests/docker-compose.yml" >> $GITHUB_ENV
           fi
           echo "CONTAINER_NAME=drupal" >> $GITHUB_ENV
+          # ISO week, e.g. 2026-W41. Passed to the Dockerfiles so the OS
+          # package upgrade step misses the build cache once a week.
+          echo "OS_UPDATES_WEEK=$(date -u +%G-W%V)" >> $GITHUB_ENV
 
       - name: Build and load Docker image for testing
         uses: docker/build-push-action@v7
@@ -154,6 +157,7 @@ jobs:
           platforms: linux/${{ matrix.arch.name }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+            OS_UPDATES_WEEK=${{ env.OS_UPDATES_WEEK }}
           # cache-from only: the push-by-digest step below owns cache-to
           # so we don't write near-identical caches twice per cell. The
           # second build hits buildx's in-process cache populated here.
@@ -312,6 +316,7 @@ jobs:
           platforms: linux/${{ matrix.arch.name }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+            OS_UPDATES_WEEK=${{ env.OS_UPDATES_WEEK }}
           # push-by-digest: each runner publishes only its arch as an
           # untagged manifest. The merge job stitches per-arch digests
           # into the tagged multi-arch manifest list via imagetools.
