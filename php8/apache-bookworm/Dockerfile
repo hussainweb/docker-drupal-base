@@ -9,8 +9,14 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
       org.opencontainers.image.description="Drupal-ready PHP ${PHP_VERSION} runtime on Debian Bookworm with Apache (legacy variant)" \
       org.opencontainers.image.version="${PHP_VERSION}"
 
+# Changes every week (the workflow passes the ISO week), so this step and
+# everything after it is rebuilt at least weekly instead of being reused from
+# the build cache with stale OS packages.
+ARG OS_UPDATES_WEEK
+
 # install the PHP extensions we need
 RUN set -eux; \
+	echo "OS updates for ${OS_UPDATES_WEEK:-unset}"; \
 	\
 	if command -v a2enmod; then \
 # https://github.com/drupal/drupal/blob/d91d8d0a6d3ffe5f0b6dde8c2fbe81404843edc5/.htaccess (references both mod_expires and mod_rewrite explicitly)

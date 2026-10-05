@@ -60,8 +60,14 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
 # Replace the upstream binary with the one that includes Coraza and rate limiting
 COPY --from=frankenphp-builder /usr/local/bin/frankenphp /usr/local/bin/frankenphp
 
+# Changes every week (the workflow passes the ISO week), so this step and
+# everything after it is rebuilt at least weekly instead of being reused from
+# the build cache with stale OS packages.
+ARG OS_UPDATES_WEEK
+
 # install the PHP extensions we need
 RUN set -eux; \
+	echo "OS updates for ${OS_UPDATES_WEEK:-unset}"; \
 	apt-get update; \
 # pull in any security updates from Debian that the upstream base
 # image hasn't picked up yet
