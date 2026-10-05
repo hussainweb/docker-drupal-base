@@ -108,6 +108,9 @@ ratelimit)
     done
     check "request 6 is rate limited" 429 "$(status /user/login "${a[@]}")"
     check_contains "429 carries Retry-After" "Retry-After:" "$(curl -si "${a[@]}" "$BASE_URL/user/login")"
+    # Strict parsing reads X-Forwarded-For from the right, so a forged
+    # address the client puts in front does not give it a new limit.
+    check "a forged X-Forwarded-For prefix is ignored" 429 "$(status /user/login -H "X-Forwarded-For: 192.0.2.1, 198.51.100.1")"
     check "static assets are not counted" 200 "$(status /core/misc/drupal.js "${a[@]}")"
     check "another client is allowed" 200 "$(status /user/login "${b[@]}")"
     check_contains "the log has the client" '"key":"198.51.100.1"' "$(docker compose logs "$SERVICE" 2>&1)"

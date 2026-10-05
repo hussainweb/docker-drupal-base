@@ -11,6 +11,9 @@
 	servers {
 		# Proxies whose client IP headers are believed. None by default.
 		trusted_proxies static {$TRUSTED_PROXIES:}
+		# Read X-Forwarded-For from the right, skipping trusted proxies, so a
+		# client cannot pick its own address by sending the header itself.
+		trusted_proxies_strict
 		client_ip_headers {$CLIENT_IP_HEADERS:X-Forwarded-For}
 	}
 }

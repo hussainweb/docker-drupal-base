@@ -229,6 +229,9 @@ The image ships with a Drupal-tuned Caddyfile that blocks access to sensitive pa
 	servers {
 		# Proxies whose client IP headers are believed. None by default.
 		trusted_proxies static {$TRUSTED_PROXIES:}
+		# Read X-Forwarded-For from the right, skipping trusted proxies, so a
+		# client cannot pick its own address by sending the header itself.
+		trusted_proxies_strict
 		client_ip_headers {$CLIENT_IP_HEADERS:X-Forwarded-For}
 	}
 }
@@ -401,7 +404,7 @@ services:
 
 A client that goes over the limit gets a `429` with a `Retry-After` header, and the container log has a `rate limit exceeded` line with the client's address. Clients are told apart by IP address. IPv6 addresses share a limit per `/64`, because one host usually has a whole `/64`. Static assets (CSS, JS, images and fonts) are not counted, so a page load uses one request of the budget, plus any AJAX calls it makes. Rate limiting runs before the WAF and basic auth, so it also slows down password guessing.
 
-**Behind a proxy, set `TRUSTED_PROXIES`.** Without it every request seems to come from the load balancer, so all visitors share one limit and a busy site starts answering `429`. Only list proxies you control. A trusted range can claim any client IP, so trusting too much lets anyone pick their own limit. `TRUSTED_PROXIES` sets Caddy's [`trusted_proxies`](https://caddyserver.com/docs/caddyfile/options#trusted-proxies), so it also changes the client IP in Caddy's logs. PHP's `REMOTE_ADDR` is not affected. Configure Drupal's `reverse_proxy` settings for that.
+**Behind a proxy, set `TRUSTED_PROXIES`.** Without it every request seems to come from the load balancer, so all visitors share one limit and a busy site starts answering `429`. Only list proxies you control. A trusted range can claim any client IP, so trusting too much lets anyone pick their own limit. The header is read from the right ([`trusted_proxies_strict`](https://caddyserver.com/docs/caddyfile/options#trusted-proxies-strict)), skipping trusted proxies, so an address a client adds to `X-Forwarded-For` itself is ignored when your proxy appends to the header. `TRUSTED_PROXIES` sets Caddy's [`trusted_proxies`](https://caddyserver.com/docs/caddyfile/options#trusted-proxies), so it also changes the client IP in Caddy's logs. PHP's `REMOTE_ADDR` is not affected. Configure Drupal's `reverse_proxy` settings for that.
 
 **Choosing a limit.** The default of 120 requests a minute (excluding static assets) is a starting point. Many editors behind one office NAT share an address, and some admin pages make many AJAX requests. Raise the limit if you see legitimate `429`s in the log. The counts are kept in memory, per container. With several replicas, each one counts separately, and a restart resets them.
 
