@@ -5,7 +5,7 @@
 - `php8/<variant>/Dockerfile` — one image per variant: `apache-trixie`, `apache-bookworm`, `fpm-alpine`, `frankenphp-trixie` (the FrankenPHP variant also has a `Caddyfile`). Changes that apply to "the image" usually need to be made in every variant.
 - `tests/` — the Docker Compose files and scripts (`install-drupal.sh`, `verify-drupal.sh`) that CI runs against a freshly built image.
 - `.github/workflows/docker-buildx.yml` — the only build/test/publish workflow.
-- `.grype.yaml` — vulnerability-scan ignores (currently upstream FrankenPHP Go dependencies).
+- `.grype.yaml` — vulnerability-scan ignores (currently none; add an entry only with a reason and a tracking issue).
 - `build.sh` / `clean.sh` — manual local publishing helpers. `build.sh` uses `--push`; never run it.
 
 ## Testing: let GitHub Actions do it
