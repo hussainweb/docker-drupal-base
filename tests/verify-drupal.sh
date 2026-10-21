@@ -214,7 +214,7 @@ fi
 
 # Test 7b: Session upload progress is disabled by default (CVE-2026-109619 hardening)
 echo -n "Testing session.upload_progress is disabled... "
-UPLOAD_PROGRESS=$(docker compose exec -T $SERVICE php -r 'echo ini_get("session.upload_progress.enabled") ? "on" : "off";' 2>&1 || echo "")
+UPLOAD_PROGRESS=$(docker compose exec -T "$SERVICE" php -r '$value = ini_get("session.upload_progress.enabled"); echo $value === false ? "missing" : ($value ? "on" : "off");' 2>&1 || echo "")
 
 if [ "$UPLOAD_PROGRESS" = "off" ]; then
     echo "✓ PASSED"
