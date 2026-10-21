@@ -496,6 +496,18 @@ volumes:
 
 Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
 
+## PHP hardening defaults
+
+All variants set `session.upload_progress.enabled=0` in `/usr/local/etc/php/conf.d/docker-php-drupal-hardening.ini`. PHP's session upload progress is a feature where a form posts a `PHP_SESSION_UPLOAD_PROGRESS` field and a second request polls `$_SESSION` for the upload status. Drupal does not use it (the file widget's progress bar needs the PECL `uploadprogress` extension, which is unaffected), and JavaScript uploaders read progress from the browser's own XHR events. It is a reachable path in CVE-2026-109619, and the upstream advisory recommends turning it off if you don't need it.
+
+If your application relies on it, re-enable it in a file that sorts after `docker-php-drupal-hardening.ini`, for example by mounting `zz-project.ini` into `/usr/local/etc/php/conf.d/`:
+
+```ini
+session.upload_progress.enabled=1
+```
+
+This is hardening only. Updating PHP is the complete fix for the advisory.
+
 ## Health check
 
 Every variant ships with a `HEALTHCHECK` that opens a TCP connection to the web server (port 80, or 9000 on `fpm-alpine`):
