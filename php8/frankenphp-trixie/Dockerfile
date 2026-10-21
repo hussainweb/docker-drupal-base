@@ -10,7 +10,7 @@ FROM dunglas/frankenphp:builder-php${PHP_VERSION}-trixie AS frankenphp-builder
 COPY --from=caddy:builder /usr/bin/xcaddy /usr/bin/xcaddy
 
 # Pinned so the build is reproducible; bump it deliberately.
-ARG CORAZA_CADDY_VERSION=v2.6.1
+ARG CORAZA_CADDY_VERSION=v2.6.2
 # A commit on master: the only release, v0.1.0, predates ipv6_prefix and the
 # metrics fixes.
 ARG CADDY_RATELIMIT_VERSION=v0.1.1-0.20260612195517-5625512f24f6
