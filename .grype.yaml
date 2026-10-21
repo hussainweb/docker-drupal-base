@@ -1,29 +1,7 @@
 # Configuration for Grype vulnerability scanner (anchore/scan-action)
 # https://github.com/anchore/grype
 
-ignore:
-  # Upstream FrankenPHP binary dependencies (see Issue #40)
-  # Pre-compiled inside /usr/local/bin/frankenphp in dunglas/frankenphp:php*-trixie
-  - vulnerability: GHSA-r277-6w6q-xmqw
-    package:
-      name: github.com/getkin/kin-openapi
-      type: go-module
-    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
-
-  - vulnerability: GHSA-hrxh-6v49-42gf
-    package:
-      name: google.golang.org/grpc
-      type: go-module
-    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
-
-  - vulnerability: GHSA-2v4p-qf9q-27wj
-    package:
-      name: google.golang.org/grpc
-      type: go-module
-    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
-
-  - vulnerability: GHSA-vp52-pcj8-j9qc
-    package:
-      name: google.golang.org/grpc
-      type: go-module
-    reason: "Upstream FrankenPHP pre-compiled Go dependency (Issue #40)"
+# No ignores. The FrankenPHP binary is built in this repo, so there are no
+# upstream-only Go dependency findings to suppress. Add an entry here only with
+# a reason and a link to the tracking issue.
+ignore: []
