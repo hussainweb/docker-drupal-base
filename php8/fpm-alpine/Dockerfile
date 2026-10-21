@@ -117,6 +117,12 @@ RUN { \
 # Remove the memory limit for the CLI only.
 	echo 'memory_limit = -1' > /usr/local/etc/php/php-cli.ini;
 
+# Disable PHP's session upload progress. Drupal does not use it (its progress bar
+# needs the PECL uploadprogress extension) and it is a reachable path in
+# CVE-2026-109619. To re-enable it, set session.upload_progress.enabled=1 in a
+# later-sorted conf.d file (for example zz-project.ini).
+RUN echo 'session.upload_progress.enabled=0' > /usr/local/etc/php/conf.d/docker-php-drupal-hardening.ini
+
 WORKDIR /var/www/html
 
 ENV COMPOSER_ALLOW_SUPERUSER=1

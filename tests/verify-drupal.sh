@@ -212,6 +212,18 @@ else
     ((TESTS_FAILED++))
 fi
 
+# Test 7b: Session upload progress is disabled by default (CVE-2026-109619 hardening)
+echo -n "Testing session.upload_progress is disabled... "
+UPLOAD_PROGRESS=$(docker compose exec -T "$SERVICE" php -r '$value = ini_get("session.upload_progress.enabled"); echo $value === false ? "missing" : ($value ? "on" : "off");' 2>&1 || echo "")
+
+if [ "$UPLOAD_PROGRESS" = "off" ]; then
+    echo "✓ PASSED"
+    ((TESTS_PASSED++))
+else
+    echo "✗ FAILED (got: $UPLOAD_PROGRESS)"
+    ((TESTS_FAILED++))
+fi
+
 # Test 8: Check web root permissions
 echo -n "Testing web root is readable... "
 WEB_ROOT_CHECK=$(docker compose exec -T $SERVICE sh -c "test -r ${WEBROOT}/web/index.php && echo readable" || echo "")
