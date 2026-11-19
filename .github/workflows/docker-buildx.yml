@@ -92,7 +92,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php_version: ["8.2", "8.3", "8.4", "8.5"]
+        php_version: ["8.3", "8.4", "8.5"]
         variant:
           [
             "apache-trixie",
@@ -103,11 +103,10 @@ jobs:
         arch:
           - { name: amd64, runs_on: ubuntu-24.04 }
           - { name: arm64, runs_on: ubuntu-24.04-arm }
-        # On pull_request and scheduled runs, skip PHP 8.2 and 8.3 to keep
-        # CI fast. They are only built on direct pushes to main and on
+        # On pull_request and scheduled runs, skip PHP 8.3 to keep CI fast.
+        # It is only built on direct pushes to main and on
         # workflow_dispatch. The 'none' fallback is a no-op exclude.
         exclude:
-          - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
           - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
     steps:
       - name: Checkout
@@ -206,11 +205,7 @@ jobs:
         run: |
           chmod +x tests/install-drupal.sh
           # The script uses 'docker compose exec -T drupal', which matches our service name 'drupal'
-          if [ "${{ matrix.php_version }}" == "8.2" ]; then
-            ./tests/install-drupal.sh ${{ matrix.variant }} "^10"
-          else
-            ./tests/install-drupal.sh ${{ matrix.variant }} "^11"
-          fi
+          ./tests/install-drupal.sh ${{ matrix.variant }} "^11"
 
       - name: Run Drupal verification tests
         run: |
@@ -355,7 +350,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php_version: ["8.2", "8.3", "8.4", "8.5"]
+        php_version: ["8.3", "8.4", "8.5"]
         variant:
           [
             "apache-trixie",
@@ -364,7 +359,6 @@ jobs:
             "frankenphp-trixie",
           ]
         exclude:
-          - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
           - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
     steps:
       - name: Download per-arch digests

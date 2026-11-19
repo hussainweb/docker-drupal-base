@@ -17,7 +17,7 @@ What `docker-buildx.yml` does on a **pull request**:
 - Builds every variant on native amd64 and arm64 runners with `load: true` (no push, no registry login).
 - Starts the image with `tests/docker-compose*.yml`, installs Drupal with `tests/install-drupal.sh`, and runs `tests/verify-drupal.sh`.
 - Scans the image with Grype (`severity-cutoff: high`, `only-fixed`, config in `.grype.yaml`); a finding fails the job.
-- Builds only PHP 8.4 and 8.5. PHP 8.2 and 8.3 are built only on pushes to `main` and manual `workflow_dispatch`.
+- Builds only PHP 8.4 and newer. PHP 8.3 is built only on pushes to `main` and manual `workflow_dispatch`.
 - Is skipped entirely when a PR touches only `**/*.md`, `.github/dependabot.yml`, `build.sh` or `clean.sh`.
 
 On a **push to `main`** (i.e. after merge) the same workflow additionally builds all PHP versions, pushes per-arch digests to Docker Hub, merges them into the multi-arch tags (`php8.5-frankenphp-trixie`, `latest`, ...) and syncs the README to Docker Hub. Merging to `main` publishes images, so a change is only "done" once that run is green too.

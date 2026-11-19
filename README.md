@@ -17,12 +17,11 @@ Choose the image that best fits your needs. The Apache image is a good choice fo
 
 This image supports the following PHP versions:
 
-- PHP 8.2
 - PHP 8.3
 - PHP 8.4
 - PHP 8.5 (latest)
 
-PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`.
+PHP 8.3–8.5 are available in all four variants, including `frankenphp-trixie`.
 
 ### Available Tags
 
@@ -30,9 +29,9 @@ PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`.
 - `php8.5-apache-trixie` - PHP 8.5 with Apache on Debian Trixie
 - `php8.5-apache-bookworm` - PHP 8.5 with Apache on Debian Bookworm
 - `php8.5-alpine`, `php8.5-fpm-alpine`, `latest-alpine` - PHP 8.5 FPM on Alpine Linux
-- `php8.4`, `php8.3`, `php8.2` - Older PHP versions with Apache on Debian Trixie
-- `php8.4-alpine`, `php8.3-alpine`, `php8.2-alpine` - Older PHP versions FPM on Alpine Linux
-- `php8.5-frankenphp-trixie`, `php8.4-frankenphp-trixie`, `php8.3-frankenphp-trixie`, `php8.2-frankenphp-trixie` - FrankenPHP on Debian Trixie
+- `php8.4`, `php8.3` - Older PHP versions with Apache on Debian Trixie
+- `php8.4-alpine`, `php8.3-alpine` - Older PHP versions FPM on Alpine Linux
+- `php8.5-frankenphp-trixie`, `php8.4-frankenphp-trixie`, `php8.3-frankenphp-trixie` - FrankenPHP on Debian Trixie
 
 All images support both `linux/amd64` and `linux/arm64` architectures.
 
@@ -42,12 +41,11 @@ Images are rebuilt only for PHP versions that still get security fixes from the 
 
 | PHP | Security support until |
 | --- | --- |
-| 8.2 | 2026-12-31 |
 | 8.3 | 2027-12-31 |
 | 8.4 | 2028-12-31 |
 | 8.5 | 2029-12-31 |
 
-**PHP 8.2 reaches end of life on 2026-12-31.** Move to PHP 8.3 or newer before then. The `php8.2*` tags will not be rebuilt after that date.
+**PHP 8.2 reached end of life on 2026-12-31** and is no longer built. The `php8.2*` tags stay on Docker Hub at their last build and get no further security updates; move to PHP 8.3 or newer.
 
 ## Usage
 
