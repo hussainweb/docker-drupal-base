@@ -50,6 +50,7 @@ Images are rebuilt only for PHP versions that still get security fixes from the 
 | 8.3 | 2027-12-31 |
 | 8.4 | 2028-12-31 |
 | 8.5 | 2029-12-31 |
+| 8.6 | 2030-12-31 |
 
 **PHP 8.2 reaches end of life on 2026-12-31.** Move to PHP 8.3 or newer before then. The `php8.2*` tags will not be rebuilt after that date.
 
