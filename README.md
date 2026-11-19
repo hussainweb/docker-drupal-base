@@ -496,6 +496,21 @@ volumes:
 
 Caddy will automatically obtain and renew TLS certificates from Let's Encrypt.
 
+## Adding PHP extensions
+
+Every image ships [PIE](https://github.com/php/pie) at `/usr/local/bin/pie`, next to Composer. PIE is the PHP Foundation's installer for PECL extensions. The images already use it to install APCu, memcached, Redis and YAML.
+
+The images don't keep compilers or `-dev` packages, so let PIE install what it needs when you build your own image:
+
+```dockerfile
+FROM hussainweb/drupal-base:php8.5
+RUN pie install --auto-install-build-tools --auto-install-system-dependencies xdebug/xdebug
+```
+
+These flags leave the build tools in your image. For a smaller image, install them yourself in the same `RUN` and remove them afterwards. Extensions that ship with PHP (for example `soap` or `xsl`) still use `docker-php-ext-install`.
+
+Install extensions in a Dockerfile, not in an entrypoint script. Compiling when the container starts needs build tools and network access in the running container, and it slows every start.
+
 ## PHP hardening defaults
 
 All variants set `session.upload_progress.enabled=0` in `/usr/local/etc/php/conf.d/docker-php-drupal-hardening.ini`. PHP's session upload progress is a feature where a form posts a `PHP_SESSION_UPLOAD_PROGRESS` field and a second request polls `$_SESSION` for the upload status. Drupal does not use it (the file widget's progress bar needs the PECL `uploadprogress` extension, which is unaffected), and JavaScript uploaders read progress from the browser's own XHR events. It is a reachable path in CVE-2026-109619, and the upstream advisory recommends turning it off if you don't need it.
