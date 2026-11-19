@@ -51,10 +51,17 @@ fi
 
 # Require Drush
 echo "Requiring Drush..."
-# consolidation/robo 5.2.3 calls a Symfony Console 7.4 method, so Drush fails
-# on Drupal 10 (Console 6.4). Fixed upstream in consolidation/robo#1197 but not
-# released yet; drop the exclusion once robo 5.2.4 is out.
-docker compose exec -T $SERVICE composer require drush/drush 'consolidation/robo:!=5.2.3' --no-interaction
+# consolidation/robo 5.2.1-5.2.3 call Application::addCommand(), which only
+# exists in Symfony Console 7.4+, so Drush fails on Drupal 10 (Console 6.4).
+# 5.2.2 also ships merge-conflict markers. Drupal 11 is fine with 5.2.3. Fixed
+# upstream in consolidation/robo#1197 but not released; drop this cap once
+# robo 5.2.4 is out.
+ROBO=""
+case "$CONSTRAINT" in
+    ^10*) ROBO="consolidation/robo:<5.2.1" ;;
+esac
+# shellcheck disable=SC2086 # $ROBO is empty or a single word
+docker compose exec -T $SERVICE composer require drush/drush $ROBO --no-interaction
 
 # Set proper permissions
 echo "Setting up permissions..."
