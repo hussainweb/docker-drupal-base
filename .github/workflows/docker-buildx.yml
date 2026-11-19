@@ -404,6 +404,11 @@ jobs:
             TAGS="${TAGS},${{ env.IMAGE_NAME }}:latest"
           fi
 
+          # For the latest PHP version on fpm-alpine, add the latest-alpine tag
+          if [ "${{ matrix.php_version }}" = "8.5" ] && [ "${{ matrix.variant }}" = "fpm-alpine" ]; then
+            TAGS="${TAGS},${{ env.IMAGE_NAME }}:latest-alpine"
+          fi
+
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
       - name: Create multi-arch manifest and push
