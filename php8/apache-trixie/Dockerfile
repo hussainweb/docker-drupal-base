@@ -1,7 +1,7 @@
 ARG PHP_VERSION=8.4
 
-# PIE installs the PECL extensions. It is bind-mounted into the build step,
-# not copied into the image.
+# PIE installs the PECL extensions below and ships in the image, like Composer,
+# for images built on top of this one.
 FROM ghcr.io/php/pie:1.5.5-bin AS pie
 
 # from https://www.drupal.org/docs/system-requirements/php-requirements
@@ -19,9 +19,10 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
 # the build cache with stale OS packages.
 ARG OS_UPDATES_WEEK
 
+COPY --from=pie /pie /usr/local/bin/pie
+
 # install the PHP extensions we need
-RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
-	set -eux; \
+RUN set -eux; \
 	echo "OS updates for ${OS_UPDATES_WEEK:-unset}"; \
 	\
 	if command -v a2enmod; then \
