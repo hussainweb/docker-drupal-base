@@ -36,6 +36,19 @@ PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`.
 
 All images support both `linux/amd64` and `linux/arm64` architectures.
 
+### PHP end of life
+
+Images are rebuilt only for PHP versions that still get security fixes from the PHP project. When a version reaches its end of life (see [PHP supported versions](https://www.php.net/supported-versions.php)), its last image stays on Docker Hub but is no longer rebuilt, so it gets no PHP or OS security updates.
+
+| PHP | Security support until |
+| --- | --- |
+| 8.2 | 2026-12-31 |
+| 8.3 | 2027-12-31 |
+| 8.4 | 2028-12-31 |
+| 8.5 | 2029-12-31 |
+
+**PHP 8.2 reaches end of life on 2026-12-31.** Move to PHP 8.3 or newer before then. The `php8.2*` tags will not be rebuilt after that date.
+
 ## Usage
 
 ### Apache
