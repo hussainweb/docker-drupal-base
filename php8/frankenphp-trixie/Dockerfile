@@ -14,11 +14,11 @@ FROM dunglas/frankenphp:builder-php${PHP_VERSION}-trixie AS frankenphp-builder
 # xcaddy is not part of the FrankenPHP builder image
 COPY --from=caddy:builder /usr/bin/xcaddy /usr/bin/xcaddy
 
-# Pinned so the build is reproducible; bump it deliberately.
-ARG CORAZA_CADDY_VERSION=v2.6.2
-# A commit on master: the only release, v0.1.0, predates ipv6_prefix and the
+# The versions of the modules we add (Coraza, caddy-ratelimit) are pinned in
+# modules/go.mod, where Dependabot keeps them current. caddy-ratelimit is
+# pinned to a commit: its only release, v0.1.0, predates ipv6_prefix and the
 # metrics fixes.
-ARG CADDY_RATELIMIT_VERSION=v0.1.1-0.20260612195517-5625512f24f6
+COPY modules/go.mod /tmp/caddy-modules/go.mod
 
 # CGO must be enabled to build FrankenPHP. XCADDY_SETCAP keeps the
 # cap_net_bind_service capability the upstream binary has. The build tags are
@@ -26,11 +26,14 @@ ARG CADDY_RATELIMIT_VERSION=v0.1.1-0.20260612195517-5625512f24f6
 # for "encode br", Mercure, Vulcain) plus Coraza and caddy-ratelimit. Caddy and
 # the upstream modules are pinned to the versions in FrankenPHP's own go.mod:
 # xcaddy would otherwise take the latest releases, which can need a newer Go
-# than the builder has.
+# than the builder has. A module we add can still require a newer Caddy, which
+# Go would then pull in, so the build fails unless the binary's Caddy matches
+# FrankenPHP's pin.
 RUN --mount=type=cache,target=/root/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
 	set -eux; \
 	ver() { awk -v m="$1" '$1 == m { print $2; exit }' /go/src/app/caddy/go.mod; }; \
+	mod() { awk -v m="$1" '$1 == m { print $2; exit }' /tmp/caddy-modules/go.mod; }; \
 	CGO_ENABLED=1 \
 	XCADDY_SETCAP=1 \
 	XCADDY_GO_BUILD_FLAGS="-ldflags='-w -s' -tags=nobadger,nomysql,nopgx" \
@@ -43,10 +46,13 @@ RUN --mount=type=cache,target=/root/go/pkg/mod \
 		--with "github.com/dunglas/caddy-cbrotli@$(ver github.com/dunglas/caddy-cbrotli)" \
 		--with "github.com/dunglas/mercure/caddy@$(ver github.com/dunglas/mercure/caddy)" \
 		--with "github.com/dunglas/vulcain/caddy@$(ver github.com/dunglas/vulcain/caddy)" \
-		--with "github.com/corazawaf/coraza-caddy/v2@${CORAZA_CADDY_VERSION}" \
-		--with "github.com/mholt/caddy-ratelimit@${CADDY_RATELIMIT_VERSION}" \
+		--with "github.com/corazawaf/coraza-caddy/v2@$(mod github.com/corazawaf/coraza-caddy/v2)" \
+		--with "github.com/mholt/caddy-ratelimit@$(mod github.com/mholt/caddy-ratelimit)" \
 	; \
 	frankenphp version; \
+	caddy_want="$(ver github.com/caddyserver/caddy/v2)"; \
+	caddy_got="$(go version -m /usr/local/bin/frankenphp | awk '$1 == "dep" && $2 == "github.com/caddyserver/caddy/v2" { print $3 }')"; \
+	[ "$caddy_got" = "$caddy_want" ] || { echo "Caddy drifted: built ${caddy_got:-unknown}, FrankenPHP pins ${caddy_want}" >&2; exit 1; }; \
 	frankenphp list-modules --versions --skip-standard; \
 	frankenphp list-modules | grep -qx 'http.handlers.waf'; \
 	frankenphp list-modules | grep -qx 'http.encoders.br'; \

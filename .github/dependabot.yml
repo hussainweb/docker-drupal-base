@@ -15,6 +15,20 @@ updates:
           - "*"
         group-by: dependency-name
 
+  # The Caddy modules the FrankenPHP image adds on top of upstream. The build
+  # reads their versions from this go.mod. caddy-ratelimit is pinned to a
+  # commit, so it only gets PRs once upstream tags a newer release.
+  - package-ecosystem: "gomod"
+    directory: "/php8/frankenphp-trixie/modules"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build"
+    groups:
+      caddy-modules:
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
