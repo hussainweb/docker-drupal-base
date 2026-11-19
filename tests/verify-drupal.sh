@@ -190,7 +190,7 @@ fi
 
 # Test 7: Check required PHP extensions
 echo -n "Testing required PHP extensions... "
-REQUIRED_EXTENSIONS="gd pdo pdo_sqlite json opcache"
+REQUIRED_EXTENSIONS="gd pdo pdo_sqlite json opcache mbstring apcu memcached redis yaml bcmath bz2 exif intl pcntl pdo_mysql pdo_pgsql sockets zip"
 MISSING_EXTENSIONS=""
 
 for ext in $REQUIRED_EXTENSIONS; do
