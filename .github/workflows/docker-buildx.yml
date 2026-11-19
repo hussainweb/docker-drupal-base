@@ -271,6 +271,20 @@ jobs:
         if: matrix.variant == 'frankenphp-trixie'
         run: ./tests/verify-frankenphp-waf.sh capability "drupal-test:${{ matrix.php_version }}-${{ matrix.variant }}"
 
+      - name: Install Drupal 12
+        # Drupal 12 needs PHP 8.5+. It runs after every check above, on a
+        # recreated container without the FrankenPHP overrides, so those
+        # checks keep testing Drupal 11. "@beta" allows pre-releases before
+        # 12.0.0 is out and still picks the newest stable release after it.
+        if: fromJSON(matrix.php_version) >= 8.5
+        run: |
+          docker compose up -d --force-recreate
+          ./tests/install-drupal.sh ${{ matrix.variant }} "^12@beta"
+
+      - name: Run Drupal 12 verification tests
+        if: fromJSON(matrix.php_version) >= 8.5
+        run: ./tests/verify-drupal.sh ${{ matrix.variant }}
+
       - name: Capture logs
         if: failure()
         run: |
