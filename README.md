@@ -21,11 +21,15 @@ This image supports the following PHP versions:
 - PHP 8.3
 - PHP 8.4
 - PHP 8.5 (latest)
+- PHP 8.6
 
-PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`.
+PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`. PHP 8.6 is available in `apache-trixie`, `apache-bookworm` and `fpm-alpine`; `frankenphp-trixie` follows once FrankenPHP publishes its PHP 8.6 images. The `latest` tags stay on PHP 8.5 for now.
 
 ### Available Tags
 
+- `php8.6`, `php8.6-apache-trixie` - PHP 8.6 with Apache on Debian Trixie
+- `php8.6-apache-bookworm` - PHP 8.6 with Apache on Debian Bookworm
+- `php8.6-alpine`, `php8.6-fpm-alpine` - PHP 8.6 FPM on Alpine Linux
 - `php8.5`, `latest` - PHP 8.5 with Apache on Debian Trixie
 - `php8.5-apache-trixie` - PHP 8.5 with Apache on Debian Trixie
 - `php8.5-apache-bookworm` - PHP 8.5 with Apache on Debian Bookworm
