@@ -1,5 +1,20 @@
 version: 2
 updates:
+  # Only versioned image references are tracked: today that is the PIE image.
+  # The php and dunglas/frankenphp bases follow PHP_VERSION, and composer:2
+  # and caddy:builder float on purpose.
+  - package-ecosystem: "docker"
+    directories:
+      - "/php8/*"
+    schedule:
+      interval: "weekly"
+    groups:
+      # One PR per image across all four variants, not one per Dockerfile.
+      docker-images:
+        patterns:
+          - "*"
+        group-by: dependency-name
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
