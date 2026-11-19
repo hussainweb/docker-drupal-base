@@ -51,7 +51,10 @@ fi
 
 # Require Drush
 echo "Requiring Drush..."
-docker compose exec -T $SERVICE composer require drush/drush --no-interaction
+# consolidation/robo 5.2.3 calls a Symfony Console 7.4 method, so Drush fails
+# on Drupal 10 (Console 6.4). Fixed upstream in consolidation/robo#1197 but not
+# released yet; drop the exclusion once robo 5.2.4 is out.
+docker compose exec -T $SERVICE composer require drush/drush 'consolidation/robo:!=5.2.3' --no-interaction
 
 # Set proper permissions
 echo "Setting up permissions..."
