@@ -53,6 +53,7 @@ RUN set -eux; \
 		libicu-dev \
 		libjpeg-dev \
 		libmemcached-dev \
+		libonig-dev \
 		libpng-dev \
 		libpq-dev \
 		libsqlite3-dev \
@@ -78,12 +79,17 @@ RUN set -eux; \
 			OPCACHE_EXT="opcache" ;; \
 	esac; \
 	\
+	# mbstring is no longer compiled in from PHP 8.6; Drupal requires it
+	MBSTRING_EXT=""; \
+	php -r 'exit(extension_loaded("mbstring") ? 0 : 1);' || MBSTRING_EXT="mbstring"; \
+	\
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
 		bz2 \
 		exif \
 		gd \
 		intl \
+		$MBSTRING_EXT \
 		$OPCACHE_EXT \
 		pcntl \
 		pdo_mysql \

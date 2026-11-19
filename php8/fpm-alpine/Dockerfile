@@ -51,6 +51,7 @@ RUN set -eux; \
 		libzip-dev \
 		linux-headers \
 		make \
+		oniguruma-dev \
 		sqlite-dev \
 		yaml-dev \
 # postgresql-dev is needed for https://bugs.alpinelinux.org/issues/3642
@@ -75,12 +76,17 @@ RUN set -eux; \
 			OPCACHE_EXT="opcache" ;; \
 	esac; \
 	\
+	# mbstring is no longer compiled in from PHP 8.6; Drupal requires it
+	MBSTRING_EXT=""; \
+	php -r 'exit(extension_loaded("mbstring") ? 0 : 1);' || MBSTRING_EXT="mbstring"; \
+	\
 	docker-php-ext-install -j "$(nproc)" \
 	    bcmath \
 		bz2 \
 		exif \
         gd \
 		intl \
+        $MBSTRING_EXT \
         $OPCACHE_EXT \
         pcntl \
         pdo_mysql \
