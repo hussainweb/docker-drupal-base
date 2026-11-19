@@ -1,4 +1,9 @@
 ARG PHP_VERSION=8.4
+
+# PIE installs the PECL extensions. It is bind-mounted into the build step,
+# not copied into the image.
+FROM ghcr.io/php/pie:1.5.5-bin AS pie
+
 # from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}-apache-bookworm
 
@@ -15,7 +20,8 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
 ARG OS_UPDATES_WEEK
 
 # install the PHP extensions we need
-RUN set -eux; \
+RUN --mount=type=bind,from=pie,source=/pie,target=/usr/local/bin/pie \
+	set -eux; \
 	echo "OS updates for ${OS_UPDATES_WEEK:-unset}"; \
 	\
 	if command -v a2enmod; then \
@@ -107,19 +113,13 @@ RUN set -eux; \
 		zip \
 	; \
 	\
-	pecl install \
-		apcu \
-		memcached \
-		redis \
-		yaml \
-	; \
-	\
-	docker-php-ext-enable \
-		apcu \
-		memcached \
-		redis \
-		yaml \
-	; \
+	# PIE (https://github.com/php/pie) replaces pecl, which PHP 8.6+ images no
+	# longer ship. It builds each extension and enables it with
+	# docker-php-ext-enable.
+	for pkg in apcu/apcu php-memcached/php-memcached phpredis/phpredis pecl/yaml; do \
+		pie install --no-system-dependencies-check "$pkg"; \
+	done; \
+	rm -rf "$HOME/.pie"; \
 	\
 # reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
 	apt-mark auto '.*' > /dev/null; \
