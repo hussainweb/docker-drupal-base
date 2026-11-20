@@ -54,9 +54,12 @@ RUN --mount=type=cache,target=/root/go/pkg/mod \
 	caddy_got="$(go version -m /usr/local/bin/frankenphp | awk '$1 == "dep" && $2 == "github.com/caddyserver/caddy/v2" { print $3 }')"; \
 	[ "$caddy_got" = "$caddy_want" ] || { echo "Caddy drifted: built ${caddy_got:-unknown}, FrankenPHP pins ${caddy_want}" >&2; exit 1; }; \
 	frankenphp list-modules --versions --skip-standard; \
-	frankenphp list-modules | grep -qx 'http.handlers.waf'; \
-	frankenphp list-modules | grep -qx 'http.encoders.br'; \
-	frankenphp list-modules | grep -qx 'http.handlers.rate_limit'
+# Capture the module list once: grep -q exits on the first match, and piping
+# list-modules into it fails the build with SIGPIPE (exit 141) under pipefail.
+	modules="$(frankenphp list-modules)"; \
+	grep -qx 'http.handlers.waf' <<<"$modules"; \
+	grep -qx 'http.encoders.br' <<<"$modules"; \
+	grep -qx 'http.handlers.rate_limit' <<<"$modules"
 
 # Stage 2: the runtime image
 FROM dunglas/frankenphp:php${PHP_VERSION}-trixie
