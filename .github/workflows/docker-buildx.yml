@@ -1,6 +1,15 @@
 name: Build Docker image
 on:
   workflow_dispatch:
+    inputs:
+      no-cache:
+        description: >-
+          Rebuild every image from scratch, ignoring the build cache, and
+          replace the cache with the fresh layers. Use it when a distro
+          security fix is out but a cached layer from earlier in the week
+          still has the old package (Grype fails, or images ship it).
+        type: boolean
+        default: false
   schedule:
     - cron: "5 4 1,15 * *"
   push:
@@ -161,7 +170,9 @@ jobs:
           # cache-from only: the push-by-digest step below owns cache-to
           # so we don't write near-identical caches twice per cell. The
           # second build hits buildx's in-process cache populated here.
+          # The no-cache dispatch input skips the cache entirely.
           cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.php_version }}-${{ matrix.arch.name }}
+          no-cache: ${{ inputs.no-cache == true }}
 
       - name: Create test directory structure
         run: |
@@ -328,7 +339,11 @@ jobs:
           outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           provenance: mode=max
           sbom: true
-          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.php_version }}-${{ matrix.arch.name }}
+          # With the no-cache input, don't import the stored cache: reuse
+          # only the layers the test build above just made, so this step
+          # doesn't rebuild everything a second time. cache-to then replaces
+          # the stored cache with those fresh layers.
+          cache-from: ${{ inputs.no-cache != true && format('type=gha,scope={0}-{1}-{2}', matrix.variant, matrix.php_version, matrix.arch.name) || '' }}
           cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-${{ matrix.php_version }}-${{ matrix.arch.name }}
 
       - name: Export digest
