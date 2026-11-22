@@ -109,11 +109,6 @@ jobs:
         exclude:
           - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
           - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
-          # FrankenPHP has not published PHP 8.6 images yet
-          # (dunglas/frankenphp:php8.6-trixie and builder-php8.6-trixie).
-          # Drop this exclude, and the one in the merge job, once it has.
-          - php_version: "8.6"
-            variant: frankenphp-trixie
         # No PHP 8.6 release of these extensions yet, so 8.6 builds them from
         # their development branches, pinned to a commit (the same approach
         # FrankenPHP 1.14.0 takes for its static binaries). Swap each one back
@@ -385,9 +380,6 @@ jobs:
         exclude:
           - php_version: ${{ github.event_name != 'push' && '8.2' || 'none' }}
           - php_version: ${{ github.event_name != 'push' && '8.3' || 'none' }}
-          # See the build job: no upstream FrankenPHP image for PHP 8.6 yet.
-          - php_version: "8.6"
-            variant: frankenphp-trixie
     steps:
       - name: Download per-arch digests
         uses: actions/download-artifact@v8

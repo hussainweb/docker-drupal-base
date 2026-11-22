@@ -24,6 +24,7 @@ docker pull php:8.5-fpm-alpine
 docker pull php:8.6-fpm-alpine
 docker pull dunglas/frankenphp:php8.4-trixie
 docker pull dunglas/frankenphp:php8.5-trixie
+docker pull dunglas/frankenphp:php8.6-trixie
 docker pull composer:2
 
 docker buildx create --use --name drupal-base-builder
@@ -48,5 +49,6 @@ docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/d
 
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.4-frankenphp-trixie --build-arg PHP_VERSION=8.4 ${dir}/php8/frankenphp-trixie/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.5-frankenphp-trixie --build-arg PHP_VERSION=8.5 ${dir}/php8/frankenphp-trixie/
+docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.6-frankenphp-trixie --build-arg PHP_VERSION=8.6 --build-arg PIE_PACKAGES="${PIE_PACKAGES_PHP86}" ${dir}/php8/frankenphp-trixie/
 
 docker buildx rm drupal-base-builder
