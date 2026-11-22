@@ -114,6 +114,18 @@ jobs:
           # Drop this exclude, and the one in the merge job, once it has.
           - php_version: "8.6"
             variant: frankenphp-trixie
+        # No PHP 8.6 release of these extensions yet, so 8.6 builds them from
+        # their development branches, pinned to a commit (the same approach
+        # FrankenPHP 1.14.0 takes for its static binaries). Swap each one back
+        # to its plain package name as it releases, and drop this include
+        # once all four have. Tracked in #69.
+        include:
+          - php_version: "8.6"
+            pie_packages: >-
+              apcu/apcu:dev-master#fb2c942552a3f5dab7f4dea4afb5cf0831222c57
+              php-memcached/php-memcached:dev-master#0b52d3657140750fa0eddd20cdbfc6edc8fbdadd
+              phpredis/phpredis:dev-develop#a6ce1e60b3e81ce3b25174aa5aaefd5590dc64fd
+              pecl/yaml:dev-php7#a7a3b8680b8fbf0895fd63371a0ffc1305b1a5b8
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -163,6 +175,7 @@ jobs:
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
             OS_UPDATES_WEEK=${{ env.OS_UPDATES_WEEK }}
+            ${{ matrix.pie_packages && format('PIE_PACKAGES={0}', matrix.pie_packages) || '' }}
           # cache-from only: the push-by-digest step below owns cache-to
           # so we don't write near-identical caches twice per cell. The
           # second build hits buildx's in-process cache populated here.
@@ -322,6 +335,7 @@ jobs:
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
             OS_UPDATES_WEEK=${{ env.OS_UPDATES_WEEK }}
+            ${{ matrix.pie_packages && format('PIE_PACKAGES={0}', matrix.pie_packages) || '' }}
           # push-by-digest: each runner publishes only its arch as an
           # untagged manifest. The merge job stitches per-arch digests
           # into the tagged multi-arch manifest list via imagetools.

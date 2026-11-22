@@ -25,6 +25,8 @@ This image supports the following PHP versions:
 
 PHP 8.2–8.5 are available in all four variants, including `frankenphp-trixie`. PHP 8.6 is available in `apache-trixie`, `apache-bookworm` and `fpm-alpine`; `frankenphp-trixie` follows once FrankenPHP publishes its PHP 8.6 images. The `latest` tags stay on PHP 8.5 for now.
 
+**PHP 8.6 and pre-release extensions:** APCu, memcached, Redis and YAML have no release that supports PHP 8.6 yet. Until they do, the PHP 8.6 images build them from each project's development branch, pinned to a specific commit, so every build gets the same code. Each one switches back to its regular release as it ships. If you depend on these extensions in production, stay on PHP 8.5 until then.
+
 ### Available Tags
 
 - `php8.6`, `php8.6-apache-trixie` - PHP 8.6 with Apache on Debian Trixie
