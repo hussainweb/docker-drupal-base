@@ -18,6 +18,9 @@ COPY --from=caddy:builder /usr/bin/xcaddy /usr/bin/xcaddy
 # modules/go.mod, where Dependabot keeps them current. caddy-ratelimit is
 # pinned to a commit: its only release, v0.1.0, predates ipv6_prefix and the
 # metrics fixes.
+# The same go.mod also requires FrankenPHP's own modules so that it resolves
+# the versions this build ships (for Dependabot alerts); the build only reads
+# the Coraza and caddy-ratelimit lines from it.
 COPY modules/go.mod /tmp/caddy-modules/go.mod
 
 # CGO must be enabled to build FrankenPHP. XCADDY_SETCAP keeps the
