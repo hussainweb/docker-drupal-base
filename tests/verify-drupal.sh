@@ -224,6 +224,18 @@ else
     ((TESTS_FAILED++))
 fi
 
+# Test 7c: Exception backtraces leave out function arguments (hardening)
+echo -n "Testing zend.exception_ignore_args is enabled... "
+IGNORE_ARGS=$(docker compose exec -T "$SERVICE" php -r '$value = ini_get("zend.exception_ignore_args"); echo $value === false ? "missing" : ($value ? "on" : "off");' 2>&1 || echo "")
+
+if [ "$IGNORE_ARGS" = "on" ]; then
+    echo "✓ PASSED"
+    ((TESTS_PASSED++))
+else
+    echo "✗ FAILED (got: $IGNORE_ARGS)"
+    ((TESTS_FAILED++))
+fi
+
 # Test 8: Check web root permissions
 echo -n "Testing web root is readable... "
 WEB_ROOT_CHECK=$(docker compose exec -T $SERVICE sh -c "test -r ${WEBROOT}/web/index.php && echo readable" || echo "")

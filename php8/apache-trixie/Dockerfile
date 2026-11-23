@@ -152,7 +152,15 @@ RUN { \
 # needs the PECL uploadprogress extension) and it is a reachable path in
 # CVE-2026-109619. To re-enable it, set session.upload_progress.enabled=1 in a
 # later-sorted conf.d file (for example zz-project.ini).
-RUN echo 'session.upload_progress.enabled=0' > /usr/local/etc/php/conf.d/docker-php-drupal-hardening.ini
+#
+# Leave function arguments out of exception backtraces, as php.ini-production
+# does. Captured arguments can leak secrets into logs and error pages, and give
+# backtrace bugs more to work with (CVE-2026-129474). To re-enable them for
+# debugging, set zend.exception_ignore_args=0 the same way.
+RUN { \
+		echo 'session.upload_progress.enabled=0'; \
+		echo 'zend.exception_ignore_args=1'; \
+	} > /usr/local/etc/php/conf.d/docker-php-drupal-hardening.ini
 
 WORKDIR /var/www/html
 
