@@ -13,7 +13,6 @@ docker pull php:8.2-apache-bookworm
 docker pull php:8.3-apache-bookworm
 docker pull php:8.4-apache-bookworm
 docker pull php:8.5-apache-bookworm
-docker pull php:8.6-apache-bookworm
 docker pull php:8.4-apache-trixie
 docker pull php:8.5-apache-trixie
 docker pull php:8.6-apache-trixie
@@ -33,7 +32,6 @@ docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/d
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.3-apache-bookworm --build-arg PHP_VERSION=8.3 ${dir}/php8/apache-bookworm/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.4-apache-bookworm --build-arg PHP_VERSION=8.4 ${dir}/php8/apache-bookworm/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.5-apache-bookworm --build-arg PHP_VERSION=8.5 ${dir}/php8/apache-bookworm/
-docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.6-apache-bookworm --build-arg PHP_VERSION=8.6 --build-arg PIE_PACKAGES="${PIE_PACKAGES_PHP86}" ${dir}/php8/apache-bookworm/
 
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.2 --tag hussainweb/drupal-base:php8.2-apache-trixie --build-arg PHP_VERSION=8.2 ${dir}/php8/apache-trixie/
 docker buildx build --push --platform linux/amd64,linux/arm64 --tag hussainweb/drupal-base:php8.3 --tag hussainweb/drupal-base:php8.3-apache-trixie --build-arg PHP_VERSION=8.3 ${dir}/php8/apache-trixie/

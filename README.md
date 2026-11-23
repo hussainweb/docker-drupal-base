@@ -23,14 +23,13 @@ This image supports the following PHP versions:
 - PHP 8.5 (latest)
 - PHP 8.6
 
-All PHP versions are available in all four variants. The `latest` tags stay on PHP 8.5 for now.
+All PHP versions are available in all four variants, except PHP 8.6, which has no `apache-bookworm` image: its GD extension needs a newer libavif than Debian Bookworm ships. The `latest` tags stay on PHP 8.5 for now.
 
 **PHP 8.6 and pre-release extensions:** APCu, memcached, Redis and YAML have no release that supports PHP 8.6 yet. Until they do, the PHP 8.6 images build them from each project's development branch, pinned to a specific commit, so every build gets the same code. Each one switches back to its regular release as it ships. If you depend on these extensions in production, stay on PHP 8.5 until then.
 
 ### Available Tags
 
 - `php8.6`, `php8.6-apache-trixie` - PHP 8.6 with Apache on Debian Trixie
-- `php8.6-apache-bookworm` - PHP 8.6 with Apache on Debian Bookworm
 - `php8.6-alpine`, `php8.6-fpm-alpine` - PHP 8.6 FPM on Alpine Linux
 - `php8.5`, `latest` - PHP 8.5 with Apache on Debian Trixie
 - `php8.5-apache-trixie` - PHP 8.5 with Apache on Debian Trixie
