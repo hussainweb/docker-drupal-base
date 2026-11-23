@@ -32,7 +32,7 @@ Local checks that are cheap and fine: `docker buildx build --check`, `hadolint`,
 
 - It cannot test an unmerged change, because the image it uses only exists after merge.
 - Its install and verify scripts are a copy of the ones in this repo, so it adds no coverage for image features. What it adds is real-world Drupal codebases (Drupal CMS 2, full-stack composer create-project on the host) against the published tags.
-- Treat it as a post-merge smoke test, not a merge gate. Its Drupal CMS 2 legs were already failing on its scheduled run of 2026-09-27, before this file was written. Compare against that baseline before blaming an image change.
+- Treat it as a post-merge smoke test, not a merge gate. Every job is expected to pass, Drupal CMS 2 included, so a failure needs a look. Re-run a single failed job once before blaming the image: the first page load after install occasionally fails with SQLite's `no such table: cache_render` (seen on 2026-11-23, passed on re-run).
 - Trigger it with `gh workflow run test-images.yml -R hussainweb/test-docker-drupal-base` after the `main` publish run has finished.
 
 ## Git and PR workflow
