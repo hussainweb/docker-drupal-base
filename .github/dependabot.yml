@@ -15,19 +15,33 @@ updates:
           - "*"
         group-by: dependency-name
 
-  # The Caddy modules the FrankenPHP image adds on top of upstream. The build
-  # reads their versions from this go.mod. caddy-ratelimit is pinned to a
-  # commit, so it only gets PRs once upstream tags a newer release.
+  # Mirrors what the FrankenPHP image builds, so alerts match the shipped
+  # binary (see modules/tools.go). Coraza and caddy-ratelimit are our own
+  # choices: the build reads their versions from this go.mod, and
+  # caddy-ratelimit is pinned to a commit, so it only gets PRs once upstream
+  # tags a newer release. FrankenPHP is not: the build uses whatever release
+  # the dunglas/frankenphp builder image ships, so a bump here only records
+  # that release and changes nothing in the image.
   - package-ecosystem: "gomod"
     directory: "/php8/frankenphp-trixie/modules"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "build"
+    ignore:
+      # Built at the versions FrankenPHP's go.mod pins; they move with the
+      # frankenphp/caddy bump, never on their own.
+      - dependency-name: "github.com/dunglas/caddy-cbrotli"
+      - dependency-name: "github.com/dunglas/mercure/caddy"
+      - dependency-name: "github.com/dunglas/vulcain/caddy"
     groups:
       caddy-modules:
         patterns:
-          - "*"
+          - "github.com/corazawaf/*"
+          - "github.com/mholt/caddy-ratelimit"
+      frankenphp:
+        patterns:
+          - "github.com/dunglas/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
