@@ -19,6 +19,11 @@ LABEL org.opencontainers.image.source="https://github.com/hussainweb/docker-drup
 # the build cache with stale OS packages.
 ARG OS_UPDATES_WEEK
 
+# The PECL extensions PIE installs, as PIE package names with an optional
+# :version. The CI workflow overrides this for PHP versions whose extensions
+# have no compatible release yet (see the build matrix).
+ARG PIE_PACKAGES="apcu/apcu php-memcached/php-memcached phpredis/phpredis pecl/yaml"
+
 COPY --from=pie /pie /usr/local/bin/pie
 
 # install the PHP extensions we need
@@ -54,6 +59,7 @@ RUN set -eux; \
 		libicu-dev \
 		libjpeg-dev \
 		libmemcached-dev \
+		libonig-dev \
 		libpng-dev \
 		libpq-dev \
 		libsqlite3-dev \
@@ -99,12 +105,17 @@ RUN set -eux; \
 			OPCACHE_EXT="opcache" ;; \
 	esac; \
 	\
+	# mbstring is no longer compiled in from PHP 8.6; Drupal requires it
+	MBSTRING_EXT=""; \
+	php -r 'exit(extension_loaded("mbstring") ? 0 : 1);' || MBSTRING_EXT="mbstring"; \
+	\
 	docker-php-ext-install -j "$(nproc)" \
 		bcmath \
 		bz2 \
 		exif \
 		gd \
 		intl \
+		$MBSTRING_EXT \
 		$OPCACHE_EXT \
 		pcntl \
 		pdo_mysql \
@@ -117,7 +128,7 @@ RUN set -eux; \
 	# PIE (https://github.com/php/pie) replaces pecl, which PHP 8.6+ images no
 	# longer ship. It builds each extension and enables it with
 	# docker-php-ext-enable.
-	for pkg in apcu/apcu php-memcached/php-memcached phpredis/phpredis pecl/yaml; do \
+	for pkg in $PIE_PACKAGES; do \
 		pie install --no-system-dependencies-check "$pkg"; \
 	done; \
 	rm -rf "$HOME/.pie"; \
