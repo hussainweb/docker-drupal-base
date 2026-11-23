@@ -22,6 +22,8 @@ What `docker-buildx.yml` does on a **pull request**:
 
 On a **push to `main`** (i.e. after merge) the same workflow additionally builds all PHP versions, pushes per-arch digests to Docker Hub, merges them into the multi-arch tags (`php8.5-frankenphp-trixie`, `latest`, ...) and syncs the README to Docker Hub. Merging to `main` publishes images, so a change is only "done" once that run is green too.
 
+The OS-package layer is cached per ISO week, so a distro security fix released mid-week can miss builds that reuse that week's layer. Grype then fails those builds, which blocks the whole publish (or, if Grype has no entry yet, the images ship the old package). To rebuild everything from scratch and publish, run `gh workflow run docker-buildx.yml --ref main -f no-cache=true`. For a single failed PR or `main` run, deleting the affected `index-<variant>-<php>-<arch>-*` entries (`gh cache list`, `gh cache delete <id>`) and re-running the failed jobs also works.
+
 Local checks that are cheap and fine: `docker buildx build --check`, `hadolint`, `caddy validate`/`caddy adapt` on a Caddyfile, `shellcheck`, `actionlint`.
 
 ## The downstream test repo
