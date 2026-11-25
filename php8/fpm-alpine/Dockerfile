@@ -2,7 +2,7 @@ ARG PHP_VERSION=8.4
 
 # PIE installs the PECL extensions below and ships in the image, like Composer,
 # for images built on top of this one.
-FROM ghcr.io/php/pie:1.5.5-bin AS pie
+FROM ghcr.io/php/pie:1.6.0-bin AS pie
 
 # from https://www.drupal.org/docs/system-requirements/php-requirements
 FROM php:${PHP_VERSION}-fpm-alpine
